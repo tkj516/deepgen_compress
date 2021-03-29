@@ -128,7 +128,7 @@ class DeepSourceCode(BaseModel):
             self.decode_step()
 
             # Calculate the belief
-            self.B = self.M_from_grid * self.M_to_grid * self.source.npot
+            self.B = self.M_from_grid * self.M_to_grid * self.npot
             self.B /= torch.sum(self.B, -1).unsqueeze(-1)
 
             # Termination condition to end belief propagation
