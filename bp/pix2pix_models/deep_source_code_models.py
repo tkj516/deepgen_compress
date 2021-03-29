@@ -105,7 +105,6 @@ class DeepSourceCode(BaseModel):
         self.M_from_code = self.code.M_out
         # Reshape to send to grid
         self.M_to_grid = self.M_from_code.reshape(self.h, self.w, 2)
-        print(self.M_to_grid)
 
         # Modify the message for input to the source network
         intermediate_B = self.M_to_grid * self.npot

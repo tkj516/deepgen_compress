@@ -144,12 +144,14 @@ class CodeBP(nn.Module):
         grid = torch.LongTensor([[i]*3 for i in range(self.N)]).to(self.device)
         # Sum up all the incoming messages at each node and apply tanh to get likelihood
         M_out_diff = torch.tanh(torch.sum(self.Hxs.data[factor_neighbors, grid], -1, keepdim=True))
+        print(M_out_diff)
         nan_check = torch.logical_and(torch.isnan(M_out_diff), torch.isinf(self.Hxs[factor_neighbors, grid]))
         # Resolve nans by calculating meaningful messages
         if nan_check.shape[0] > 0:
             M_out_diff[nan_check[:,0], 0] = \
                 torch.tanh(torch.sum(self.Hxs.data[factor_neighbors, grid].masked_fill(nan_check, 0), -1, keepdim=True))[nan_check[:,0],0]
         # Convert likelihoods back to probability
+        print(M_out_diff)
         self.M_out.data = 0.5 + torch.cat([M_out_diff, -M_out_diff], -1)/2
 
 #################################################################################################################
