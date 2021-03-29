@@ -84,6 +84,7 @@ parser.add_argument('--w', type=int, default=128, help="Width of image")
 parser.add_argument('--p', type=float, default=0.5, help="Node probabilities")
 parser.add_argument('--stay', type=float, default=0.8, help="Stay probabilities")
 parser.add_argument('--alpha', type=float, default=0.8, help="Update rule for source graph")
+parser.add_argument('--num_iters', type=int, default=100, help="Number of iterations of BP")
 parser.add_argument('--ldpc_mat', type=str, default='H.mat', help="Path to LDPC matrix")
 parser.add_argument('--load_image', action='store_true', help="Load an image for testing")
 parser.add_argument('--image', type=str, default='S_128.mat', help="Path to loadable image")
@@ -156,11 +157,11 @@ def test_source_code_bp():
 
     # Decode the code using belief propagation
     print("[Decoding ...]")
-    source_code_bp.decode(num_iter=1)
+    source_code_bp.decode(num_iter=args.num_iters)
 
     # Visualize the decoded image
     fig, ax = plt.subplots(2, 1)
-    ax[0].imshow(source_code_bp.samp.cpu().numpy().reshape(h, w))
+    ax[0].imshow(source_code_bp.samp.cpu().numpy().reshape(args.h, args.w))
     ax[0].set_title("Source Image")
     ax[1].imshow(np.argmax(source_code_bp.B.detach().cpu().numpy(), axis=-1))
     ax[1].set_title("Reconstructed Image")
