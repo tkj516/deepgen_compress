@@ -56,7 +56,7 @@ class DeepSourceCode(BaseModel):
         print("[Setup the source graph ...]")
 
         # Setup the code graph
-        self.code = CodeBP(self.H).to(self.device)
+        self.code = CodeBP(self.Hn device=self.device).to(self.device)
         print("[Setup the code graph ...]")
 
         # Store a matrix for doping probabilities
@@ -219,5 +219,5 @@ class DeepSourceCode(BaseModel):
     def load(self, checkpoint_file):
 
         cp = torch.load(checkpoint_file)
-        self.netD.load_state_dict(cp['netD_state_dict'])
-        self.netD.eval()
+        self.source.load_state_dict(cp['netD_state_dict'])
+        self.source.eval()
