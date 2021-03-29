@@ -56,7 +56,7 @@ class DeepSourceCode(BaseModel):
         print("[Setup the source graph ...]")
 
         # Setup the code graph
-        self.code = CodeBP(self.Hn device=self.device).to(self.device)
+        self.code = CodeBP(self.H, device=self.device).to(self.device)
         print("[Setup the code graph ...]")
 
         # Store a matrix for doping probabilities
