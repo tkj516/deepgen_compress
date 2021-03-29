@@ -102,6 +102,8 @@ class CodeBP(nn.Module):
             self.Hsx.data[factor_neighbors[check1[:,0], :], grid[check1[:,0], :]] = 0
             self.Hsx.data[factor_neighbors[check2[:,0], :], grid[check2[:,0], :]] += sure_sum[check2]
 
+        print(self.Hsx.data[factor_neighbors, grid])
+
         #####################################################################################################
         # Factor to node messages
         #####################################################################################################
