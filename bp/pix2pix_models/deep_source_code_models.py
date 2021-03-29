@@ -43,7 +43,7 @@ class DeepSourceCode(BaseModel):
         self.ldpc_mat = opt.ldpc_mat
 
         # Store the parity check matrix
-        self.H = torch.FloatTensor(loadmat(self.ldpc_mat)['H']).to(self.device)
+        self.H = torch.FloatTensor(loadmat(self.ldpc_mat)['Hf']).to(self.device)
         self.K, self.N = self.H.shape
 
         # Setup the Gibbs sampler
