@@ -114,7 +114,7 @@ class DeepSourceCode(BaseModel):
         self.M_from_grid = self.source(source_input, self.x.reshape(-1, 1, self.h//4, self.w//4))
         # Reshape to send to code
         self.M_to_code = self.M_from_grid * torch.ones((self.N, 2)).to(self.device)
-        print(self.M_to_code)
+        print(self.M_from_grid)
 
     def decode(self, num_iter=1):
 
