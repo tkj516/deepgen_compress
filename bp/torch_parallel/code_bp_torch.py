@@ -55,9 +55,6 @@ class CodeBP(nn.Module):
         Mout: N x 2
         """
 
-        print(self.Hsx.data[factor_neighbors, grid])
-
-
         if Min is None:
             Min = 0.5 * torch.ones(self.N, 2).to(self.device)
 
@@ -71,6 +68,8 @@ class CodeBP(nn.Module):
 
         grid = torch.LongTensor([[i]*3 for i in range(self.N)]).to(self.device)
         factor_neighbors = torch.LongTensor(self.neighbors_of_variable).to(self.device)
+
+        print(self.Hsx.data[factor_neighbors, grid])
         # Update messages first using external beliefs
         self.Hsx.data[factor_neighbors, grid] = log_Min.unsqueeze(-1) + log_ps.unsqueeze(-1)
 
