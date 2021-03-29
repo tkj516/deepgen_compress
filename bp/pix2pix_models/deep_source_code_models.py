@@ -61,6 +61,7 @@ class DeepSourceCode(BaseModel):
 
         # Store a matrix for doping probabilities
         self.ps = torch.FloatTensor(np.tile(np.array([1-self.p, self.p]), (self.h*self.w, 1))).to(self.device)
+        self.npot = torch.FloatTensor(np.tile(np.array([1-self.p, self.p]), (self.h*self.w, 1))).to(self.device)
 
         # Input image
         self.samp = None
@@ -86,7 +87,7 @@ class DeepSourceCode(BaseModel):
         indices = np.random.randint(self.N, size=int(self.N*self.doperate)+1)
         self.ps[indices, 0], self.ps[indices, 1] = (self.samp[indices, 0] == 0).float(), (self.samp[indices, 0] == 1).float()
         # Update the node potential after doping
-        self.source.npot.data = self.ps.reshape(self.h, self.w, 2)
+        self.npot = self.ps.reshape(self.h, self.w, 2)
 
     def generate_sample(self):
 
@@ -106,7 +107,7 @@ class DeepSourceCode(BaseModel):
         self.M_to_grid = self.M_from_code.reshape(self.h, self.w, 2)
 
         # Modify the message for input to the source network
-        intermediate_B = self.M_to_grid * self.source.npot
+        intermediate_B = self.M_to_grid * self.npot
         source_input = intermediate_B[..., 1].reshape(1, 1, self.h, self.w)
 
         # Perform one step of source graph belief propagation
