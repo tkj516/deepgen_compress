@@ -60,7 +60,7 @@ class DeepSourceCode(BaseModel):
         print("[Setup the code graph ...]")
 
         # Store a matrix for doping probabilities
-        self.ps = torch.FloatTensor(np.tile(np.array([1-p, p]), (self.h*self.w, 1))).to(self.device)
+        self.ps = torch.FloatTensor(np.tile(np.array([1-self.p, self.p]), (self.h*self.w, 1))).to(self.device)
 
         # Input image
         self.samp = None
