@@ -101,7 +101,8 @@ class CodeBP(nn.Module):
         if check1.shape[0] > 0:
             # If nan then conflicting messages so set to 0
             self.Hsx.data[factor_neighbors[check1[:,0], :], grid[check1[:,0], :]] = 0
-            self.Hsx.data[factor_neighbors[check2[:,0], :], grid[check2[:,0], :]] += sure_sum[check2]
+        if check2.shape[0] > 0:
+            self.Hsx.data[factor_neighbors[check2[:,0], :], grid[check2[:,0], :]] += sure_sum[check2[:,0]]
 
         #####################################################################################################
         # Factor to node messages
