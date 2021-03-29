@@ -33,13 +33,14 @@ class DeepSourceCode(BaseModel):
         #     # Setup the schedulers
         #     self.schedulers = [networks.get_scheduler(optimizer, opt) for optimizer in self.optimizers]
 
-        # # Store the parameters
-        # self.h = h
-        # self.w = w
-        # self.p = p
-        # self.stay = stay
-        # self.alpha = alpha
-        # self.doperate = doperate
+        # Store the parameters
+        self.h = opt.h
+        self.w = opt.w
+        self.p = opt.p
+        self.stay = opt.stay
+        self.alpha = opt.alpha
+        self.doperate = opt.doperate
+        self.ldpc_mat = opt.ldpc_mat
 
         # Store the parity check matrix
         self.H = torch.FloatTensor(loadmat(self.ldpc_mat)['H']).to(self.device)
@@ -51,7 +52,7 @@ class DeepSourceCode(BaseModel):
 
         # Setup the source neural network
         self.source = networks.define_D(netD='isinggan', gpu_ids=self.gpu_ids)
-        self.load(self.checkpoint)
+        self.load(opt.checkpoint)
         print("[Setup the source graph ...]")
 
         # Setup the code graph
