@@ -58,9 +58,13 @@ class CodeBP(nn.Module):
         if Min is None:
             Min = 0.5 * torch.ones(self.N, 2).to(self.device)
 
+        print(Min)
         # Calculate the log likelihood of the messages
         log_Min = 0.5 * (torch.log(Min[:, 0]) - torch.log(Min[:, 1]))
         log_ps = 0.5 * (torch.log(ps[:, 0]) - torch.log(ps[:, 1]))
+
+        print(log_Min)
+        print(log_ps)
 
         #####################################################################################################
         # Node to factor messages
@@ -69,7 +73,6 @@ class CodeBP(nn.Module):
         grid = torch.LongTensor([[i]*3 for i in range(self.N)]).to(self.device)
         factor_neighbors = torch.LongTensor(self.neighbors_of_variable).to(self.device)
 
-        print(self.Hsx.data[factor_neighbors, grid])
         # Update messages first using external beliefs
         self.Hsx.data[factor_neighbors, grid] = log_Min.unsqueeze(-1) + log_ps.unsqueeze(-1)
 
@@ -149,11 +152,9 @@ class CodeBP(nn.Module):
         grid = torch.LongTensor([[i]*3 for i in range(self.N)]).to(self.device)
         # Sum up all the incoming messages at each node and apply tanh to get likelihood
         M_out_diff = torch.tanh(torch.sum(self.Hxs.data[factor_neighbors, grid], -1, keepdim=True))
-        print(M_out_diff)
         nan_check = torch.logical_and(torch.isnan(M_out_diff), torch.isinf(self.Hxs[factor_neighbors, grid]))
         nan_check_idx = torch.nonzero(torch.sum(nan_check.float(), -1, keepdim=True))
         # Resolve nans by calculating meaningful messages
-        print("a", nan_check_idx.shape)
         if nan_check_idx.shape[0] > 0:
             print("here", nan_check_idx.shape)
             print(M_out_diff[nan_check_idx[:,0], 0])
