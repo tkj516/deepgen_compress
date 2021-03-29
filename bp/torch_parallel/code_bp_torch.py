@@ -58,13 +58,9 @@ class CodeBP(nn.Module):
         if Min is None:
             Min = 0.5 * torch.ones(self.N, 2).to(self.device)
 
-        print(Min)
         # Calculate the log likelihood of the messages
         log_Min = 0.5 * (torch.log(Min[:, 0]) - torch.log(Min[:, 1]))
         log_ps = 0.5 * (torch.log(ps[:, 0]) - torch.log(ps[:, 1]))
-
-        print(log_Min)
-        print(log_ps)
 
         #####################################################################################################
         # Node to factor messages
@@ -107,8 +103,6 @@ class CodeBP(nn.Module):
             self.Hsx.data[factor_neighbors[check1[:,0], :], grid[check1[:,0], :]] = 0
             self.Hsx.data[factor_neighbors[check2[:,0], :], grid[check2[:,0], :]] += sure_sum[check2]
 
-        print(self.Hsx.data[factor_neighbors, grid])
-
         #####################################################################################################
         # Factor to node messages
         #####################################################################################################
@@ -143,8 +137,6 @@ class CodeBP(nn.Module):
         if check.shape[0] > 0:
             self.Hxs.data[grid[check[:,0], :], variable_neighbors[check[:,0], :]] = torch.atanh(ll_diff_prod[check[:,0]] / ll_diff[check[:,0], :])
 
-        print(self.Hxs.data[grid, variable_neighbors])
-
         #####################################################################################################
         # Outgoing super edge messages
         #####################################################################################################
@@ -156,12 +148,9 @@ class CodeBP(nn.Module):
         nan_check_idx = torch.nonzero(torch.sum(nan_check.float(), -1, keepdim=True))
         # Resolve nans by calculating meaningful messages
         if nan_check_idx.shape[0] > 0:
-            print("here", nan_check_idx.shape)
-            print(M_out_diff[nan_check_idx[:,0], 0])
             M_out_diff[nan_check_idx[:,0], 0] = \
                 torch.tanh(torch.sum(self.Hxs.data[factor_neighbors, grid].masked_fill(nan_check, 0), -1, keepdim=True))[nan_check_idx[:,0],0]
         # Convert likelihoods back to probability
-        print(M_out_diff)
         self.M_out.data = 0.5 + torch.cat([M_out_diff, -M_out_diff], -1)/2
 
 #################################################################################################################
