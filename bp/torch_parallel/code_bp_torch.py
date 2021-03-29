@@ -136,6 +136,7 @@ class CodeBP(nn.Module):
         if check.shape[0] > 0:
             self.Hxs.data[grid[check[:,0], :], variable_neighbors[check[:,0], :]] = torch.atanh(ll_diff_prod[check[:,0]] / ll_diff[check[:,0], :])
 
+        print(self.Hxs.data[grd, variable_neighbors])
 
         #####################################################################################################
         # Outgoing super edge messages
