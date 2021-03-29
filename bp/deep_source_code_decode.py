@@ -25,7 +25,7 @@ from tensorboardX import SummaryWriter
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
 
-from pix2pix_models.deep_source_code_models import *
+from pix2pix_models.deep_source_code_models import DeepSourceCode
 
 # torch.backends.cudnn.benchmark = True
 # torch.backends.cudnn.enabled = True
@@ -136,7 +136,7 @@ writer = SummaryWriter('runs/' + sys.argv[0].split('.')[0] + '/' + dt_string)
 def test_source_code_bp():
 
     # Intialize the source-code decoding network
-    source_code_bp = Pix2PixModel(args)
+    source_code_bp = DeepSourceCode(args)
 
     # Either load a sample image or generate one using Gibb's sampling
     print("[Generating the sample ...]")
