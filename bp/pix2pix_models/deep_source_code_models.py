@@ -113,7 +113,7 @@ class DeepSourceCode(BaseModel):
         # Perform one step of source graph belief propagation
         self.M_from_grid = torch.sigmoid(self.source(source_input, self.x.reshape(-1, 1, self.h//4, self.w//4))).reshape(1, 1)
         # Reshape to send to code
-        self.M_to_code = torch.tile(torch.cat([1-self.M_from_grid, self.M_from_grid], -1), (self.N, 1)).to(self.device)
+        self.M_to_code = torch.cat([(1-self.M_from_grid)*torch.ones(self.N, 1), self.M_from_grid*torch.ones(self.N, 1)], -1).to(self.device)
 
     def decode(self, num_iter=1):
 
