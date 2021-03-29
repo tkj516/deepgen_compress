@@ -88,7 +88,7 @@ parser.add_argument('--ldpc_mat', type=str, default='H.mat', help="Path to LDPC 
 parser.add_argument('--load_image', action='store_true', help="Load an image for testing")
 parser.add_argument('--image', type=str, default='S_128.mat', help="Path to loadable image")
 parser.add_argument('--doperate', type=float, default=0.04, help="Doping rate for model")
-parser.add_argument('--checkpoint', type=str, default='./12-03-2021_01_45_26/checkpoint.pth', help="Pre-trained model checkpoint")
+parser.add_argument('--checkpoint', type=str, default='./12-03-2021_01-45-26/checkpoint.pth', help="Pre-trained model checkpoint")
 
 args = parser.parse_args()
 
