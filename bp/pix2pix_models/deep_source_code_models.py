@@ -111,7 +111,7 @@ class DeepSourceCode(BaseModel):
         source_input = intermediate_B[..., 1].reshape(1, 1, self.h, self.w)
 
         # Perform one step of source graph belief propagation
-        self.from_grid = self.source(source_input)
+        self.from_grid = self.source(source_input, self.x.reshape(-1, 1, self.h//4, self.w//2))
         # Reshape to send to code
         self.M_to_code = self.from_grid * torch.ones((self.N, 2)).to(self.device)
 
