@@ -44,8 +44,9 @@ class GridBP(nn.Module):
        
         # Resolve contradictory signals
         S = torch.sum(self.npot * Min, -1)
-        Min[..., 0][S == 0] = 0.5
-        Min[..., 1][S == 0] = 0.5
+        check_zero = torch.nonzero((S == 0).float())
+        Min[check_zero[:,0], check_zero[:,0], 0][S == 0] = 0.5
+        Min[check_zero[:,0], check_zero[:,0], 1][S == 0] = 0.5
 
         # Top to bottom
         Md1  = self.npot[:-1, ...] * Min[:-1, ...]
