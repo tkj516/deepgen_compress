@@ -156,7 +156,7 @@ def test_source_code_bp():
 
     # Decode the code using belief propagation
     print("[Decoding ...]")
-    source_code_bp.decode(num_iter=100)
+    source_code_bp.decode(num_iter=1)
 
     # Visualize the decoded image
     fig, ax = plt.subplots(2, 1)
