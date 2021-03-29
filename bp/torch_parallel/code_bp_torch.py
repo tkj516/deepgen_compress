@@ -71,6 +71,9 @@ class CodeBP(nn.Module):
         # Update messages first using external beliefs
         self.Hsx.data[factor_neighbors, grid] = log_Min.unsqueeze(-1) + log_ps.unsqueeze(-1)
 
+        print(self.Hsx.data[factor_neighbors, grid])
+
+
         # Check if any of the messages from node to factor were infinity
         inf_check = torch.isinf(self.Hxs[factor_neighbors, grid])
         # Number of sure neighbors is the number of infinities
