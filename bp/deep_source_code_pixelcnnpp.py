@@ -270,6 +270,9 @@ class SourceCodeBP():
             self.decode_step()
 
             # Calculate the belief
+            print(self.M_from_grid.device)
+            print(self.M_to_grid.device)
+            print(self.npot.device)
             self.B = self.M_from_grid * self.M_to_grid * self.npot
             self.B /= torch.sum(self.B, -1).unsqueeze(-1)
 
