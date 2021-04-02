@@ -168,11 +168,8 @@ class Source():
 
         b, h, w = ll.shape
         message = torch.zeros(b, 2, h, w).to(device)
-        print(x)
         message[:,0,:,:] = torch.where(x==0, prob, 1-prob)
         message[:,1,:,:] = torch.where(x==1, prob, 1-prob)
-
-        print(torch.sum(message, 1))
 
         return message
 
