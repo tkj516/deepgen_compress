@@ -252,6 +252,7 @@ class SourceCodeBP():
         belief /= torch.sum(belief, -1, keepdim=True)
         source_input = belief[:,:,1].reshape(1, 1, self.h, self.w)
         self.M_from_grid = self.source.message(source_input)
+        print(self.M_from_grid)
         # Permute this output
         self.M_from_grid = self.M_from_grid.squeeze(0).permute(1, 2, 0)
         # Reshape to send to code
@@ -274,8 +275,8 @@ class SourceCodeBP():
             self.B /= torch.sum(self.B, -1).unsqueeze(-1)
 
             # Termination condition to end belief propagation
-            # if torch.sum(torch.abs(self.B[..., 1] - B_old)).item() < 0.5:
-            #     break
+            if torch.sum(torch.abs(self.B[..., 1] - B_old)).item() < 0.5:
+                break
             B_old = self.B[..., 1]
 
             # Compute the number of errors and print some information
