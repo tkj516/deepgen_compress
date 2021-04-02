@@ -309,7 +309,7 @@ def test_source_code_bp():
     x_t = source_code_bp.source.transform(source_code_bp.samp.reshape(1, 1, h, w))
     l = source_code_bp.source.model(x_t, None)
     nll = source_code_bp.source.discretized_mix_logistic_loss(l, x_t)
-    print(f"[Negative Log-Likelihood of Input Sample: {-nll.sum([1, 2].item())}")
+    print(f"[Negative Log-Likelihood of Input Sample: {-nll.sum([1, 2]).item()}")
     
     # Encode the sample using the LDPC matrix
     print("[Encoding the sample ...]")
