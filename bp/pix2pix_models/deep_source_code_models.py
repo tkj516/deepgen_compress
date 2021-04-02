@@ -109,7 +109,7 @@ class DeepSourceCode(BaseModel):
         # Modify the message for input to the source network
         intermediate_B = self.M_to_grid * self.npot
         intermediate_B /= torch.sum(intermediate_B, -1, keepdim=True)
-        source_input = (intermediate_B[..., 1].reshape(1, 1, self.h, self.w) > 0.5).float()
+        source_input = intermediate_B[..., 1].reshape(1, 1, self.h, self.w).float()
 
         # Perform one step of source graph belief propagation
         self.M_from_grid = torch.sigmoid(self.source(source_input, self.x.reshape(-1, 1, self.h//4, self.w//4))).reshape(1, 1)
