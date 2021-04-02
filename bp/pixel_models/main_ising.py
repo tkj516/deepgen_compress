@@ -271,8 +271,8 @@ def train_and_evaluate(model, train_dataloader, test_dataloader, optimizer, sche
 
             # evaluate
             eval_loss = evaluate(model, test_dataloader, loss_fn, args)
-            print('Evaluate bits per dim: {:.3f}'.format(eval_loss.item() / (np.log(2) * np.prod(args.image_dims))))
-            writer.add_scalar('eval_bits_per_dim', eval_loss.item() / (np.log(2) * np.prod(args.image_dims)), args.step)
+            print('Evaluate bits per dim: {:.3f}'.format(eval_loss / (np.log(2) * np.prod(args.image_dims))))
+            writer.add_scalar('eval_bits_per_dim', eval_loss / (np.log(2) * np.prod(args.image_dims)), args.step)
 
             # generate
             samples = generate(model, generate_fn, args)
@@ -364,7 +364,7 @@ if __name__ == '__main__':
     if args.evaluate:
         if args.step > 0: optimizer.swap_ema()
         eval_loss = evaluate(model, test_dataloader, loss_fn, args)
-        print('Evaluate bits per dim: {:.3f}'.format(eval_loss.item() / (np.log(2) * np.prod(args.image_dims))))
+        print('Evaluate bits per dim: {:.3f}'.format(eval_loss / (np.log(2) * np.prod(args.image_dims))))
         if args.step > 0: optimizer.swap_ema()
 
     if args.generate:
