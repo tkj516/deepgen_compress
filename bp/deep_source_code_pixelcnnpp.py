@@ -165,7 +165,7 @@ class Source():
         x_t = self.transform(x)
         # First dimension contains true probs and second contains probs of inverted values
         out = self.model(torch.cat([x_t, 1-x_t], 0), None)
-        self.ll = self.discretized_mix_logistic_loss(out, x_t)
+        self.ll = self.discretized_mix_logistic_loss(out, torch.cat([x_t, 1-x_t], 0))
         self.prob = torch.exp(self.ll)
 
         b, _, h, w = self.ll.shape
