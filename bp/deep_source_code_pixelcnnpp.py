@@ -95,7 +95,7 @@ class Source():
         self.model.load_state_dict(model_checkpoint['state_dict'])
         self.model.eval()
 
-        self.transform = T.Compose([T.ToTensor(),                                            # tensor in [0,1]
+        self.transform = T.Compose([#T.ToTensor(),                                            # tensor in [0,1]
                                     lambda x: x.mul(255).div(2**(8-n_bits)).floor(),    # lower bits
                                     partial(self.preprocess, n_bits=n_bits)])                # to model space [-1,1]
 
