@@ -164,7 +164,7 @@ class Source():
         x_t = self.transform(x)
         out = self.model(x_t, None)
         ll = self.discretized_mix_logistic_loss(out, x_t)
-        print(f"Negative Log-Likelihood of Image: {-self.M_from_grid.sum([1, 2])}")
+        print(f"Negative Log-Likelihood of Image: {-ll.sum([1, 2]).item()}")
         prob = torch.exp(ll)
 
         b, h, w = ll.shape
