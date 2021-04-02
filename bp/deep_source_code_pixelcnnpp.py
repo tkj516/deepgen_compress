@@ -249,7 +249,7 @@ class SourceCodeBP():
 
         # Perform one step of source graph belief propagation
         # Extract the last channel of the code message
-        belief = self.M_to_grid*self.npot
+        belief = self.M_to_grid#*self.npot
         belief /= torch.sum(belief, -1, keepdim=True)
         source_input = (belief[:,:,1].reshape(1, 1, self.h, self.w) > 0.5).float()
         self.M_from_grid = self.source.message(source_input)
