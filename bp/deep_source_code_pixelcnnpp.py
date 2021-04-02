@@ -163,14 +163,13 @@ class Source():
 
         x_t = self.transform(x)
         out = self.model(x_t, None)
-        ll = self.discretized_mix_logistic_loss(out, x_t)
-        print(f"Negative Log-Likelihood of Image: {-ll.sum([1, 2]).item()}")
-        prob = torch.exp(ll)
+        self.ll = self.discretized_mix_logistic_loss(out, x_t)
+        self.prob = torch.exp(self.ll)
 
-        b, h, w = ll.shape
+        b, h, w = self.ll.shape
         message = torch.zeros(b, 2, h, w).to(device)
-        message[:,0,:,:] = torch.where(x==0, prob, 1-prob)
-        message[:,1,:,:] = torch.where(x==1, prob, 1-prob)
+        message[:,0,:,:] = torch.where(x==0, self.prob, 1-self.prob)
+        message[:,1,:,:] = torch.where(x==1, self.prob, 1-self.prob)
 
         return message
 
@@ -283,6 +282,7 @@ class SourceCodeBP():
             errs = torch.sum(torch.abs((self.B[..., 1] > 0.5).float() - self.samp.reshape(self.h, self.w))).item()
             if i % 5 == 0:
                 print(f'Iteration {i}: {errs} errors')
+                print(f"Negative Log-Likelihood of Image: {-ll.sum([1, 2]).item()}")
 
         end = time.time()
         print(f'Total time taken for decoding is {end - start}s')
@@ -303,7 +303,9 @@ def test_source_code_bp():
     if args.load_image:
         source_code_bp.samp = torch.FloatTensor(loadmat(args.image)['Sb']).reshape(-1, 1).to(device)
     else:
-        source_code_bp.generate_sample()
+        # source_code_bp.generate_sample()
+        dataset = MRFDataset()
+        source_code_bp.samp = dataset[-1]['sample'].reshape(-1, 1).to(device)
 
     # Print the nll of the sample
     x_t = source_code_bp.source.transform(source_code_bp.samp.reshape(1, 1, h, w))
