@@ -163,6 +163,7 @@ class Source():
 
         x_t = self.transform(x)
         out = self.model(x_t, None)
+        print(out.device)
         ll = self.discretized_mix_logistic_loss(out, x_t)
         prob = torch.exp(ll)
 
