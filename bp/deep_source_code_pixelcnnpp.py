@@ -250,12 +250,12 @@ class SourceCodeBP():
         # Extract the last channel of the code message
         belief = self.M_to_grid*self.npot
         belief /= torch.sum(belief, -1, keepdim=True)
-        print(belief.device)
         source_input = belief[:,:,1].reshape(1, 1, self.h, self.w)
-        print(source_input.device)
         self.M_from_grid = self.source.message(source_input)
+        # Permute this output
+        self.M_from_grid = self.M_from_grid.squeeze(0).permute(1, 2, 0)
         # Reshape to send to code
-        self.M_to_code = self.M_from_grid.squeeze(0).reshape(-1, self.h*self.w).permute(1, 0)
+        self.M_to_code = self.M_from_grid.reshape(-1, 2)
 
     def decode(self, num_iter=1):
 
