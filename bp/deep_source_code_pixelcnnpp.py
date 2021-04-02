@@ -165,12 +165,13 @@ class Source():
         out = self.model(x_t, None)
         ll = self.discretized_mix_logistic_loss(out, x_t)
         prob = torch.exp(ll)
-        print(prob)
 
         b, h, w = ll.shape
         message = torch.zeros(b, 2, h, w).to(device)
         message[:,0,:,:] = torch.where(x==0, prob, 1-prob)
         message[:,1,:,:] = torch.where(x==1, prob, 1-prob)
+
+        print(torch.sum(message, 1))
 
         return message
 
