@@ -249,7 +249,7 @@ class SourceCodeBP():
 
         # Perform one step of source graph belief propagation
         # Extract the last channel of the code message
-        belief = self.M_to_grid#*self.npot
+        belief = self.M_to_grid
         belief /= torch.sum(belief, -1, keepdim=True)
         source_input = (belief[:,:,1].reshape(1, 1, self.h, self.w) > 0.5).float()
         self.M_from_grid = self.source.message(source_input)
@@ -281,7 +281,8 @@ class SourceCodeBP():
 
             # Compute the number of errors and print some information
             errs = torch.sum(torch.abs((self.B[..., 1] > 0.5).float() - self.samp.reshape(self.h, self.w))).item()
-            print(f'Iteration {i}: {errs} errors')
+            if i % 5 == 0:
+                print(f'Iteration {i}: {errs} errors')
 
         end = time.time()
         print(f'Total time taken for decoding is {end - start}s')
@@ -303,6 +304,12 @@ def test_source_code_bp():
         source_code_bp.samp = torch.FloatTensor(loadmat(args.image)['Sb']).reshape(-1, 1).to(device)
     else:
         source_code_bp.generate_sample()
+
+    # Print the nll of the sample
+    x_t = source_code_bp.source.transform(source_code_bp.samp.reshape(1, 1, self.h, self.w))
+    l = source_code_bp.source.model(x_t, None)
+    nll = source_code_bp.source.discretized_mix_logistic_loss(l, x_t)
+    print(f"[Negative Log-Likelihood of Input Sample: {-nll.sum([1, 2].item())}")
     
     # Encode the sample using the LDPC matrix
     print("[Encoding the sample ...]")
