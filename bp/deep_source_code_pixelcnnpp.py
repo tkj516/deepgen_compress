@@ -164,6 +164,7 @@ class Source():
         x_t = self.transform(x)
         out = self.model(x_t, None)
         ll = self.discretized_mix_logistic_loss(out, x_t)
+        print(f"Negative Log-Likelihood of Image: {-self.M_from_grid.sum([1, 2])}")
         prob = torch.exp(ll)
 
         b, h, w = ll.shape
@@ -252,7 +253,6 @@ class SourceCodeBP():
         belief /= torch.sum(belief, -1, keepdim=True)
         source_input = (belief[:,:,1].reshape(1, 1, self.h, self.w) > 0.5).float()
         self.M_from_grid = self.source.message(source_input)
-        print(f"Negative Log-Likelihood of Image: {-self.M_from_grid.sum([1, 2])}")
         # Permute this output
         self.M_from_grid = self.M_from_grid.squeeze(0).permute(1, 2, 0)
         # Reshape to send to code
