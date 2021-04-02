@@ -252,8 +252,10 @@ class SourceCodeBP():
         belief /= torch.sum(belief, -1, keepdim=True)
         source_input = belief[:,:,1].reshape(1, 1, self.h, self.w)
         self.M_from_grid = self.source.message(source_input)
+        print(self.M_from_grid.device)
         # Permute this output
         self.M_from_grid = self.M_from_grid.squeeze(0).permute(1, 2, 0)
+        print(self.M_from_grid.device)
         # Reshape to send to code
         self.M_to_code = self.M_from_grid.reshape(-1, 2)
 
