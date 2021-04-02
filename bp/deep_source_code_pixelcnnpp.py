@@ -90,7 +90,7 @@ class Source():
                  n_cond_classes=None):
 
         self.model = MyDataParallel(PixelCNNpp(image_dims, n_channels, n_res_layers, n_logistic_mix,
-                                      n_cond_classes))
+                                      n_cond_classes)).to(device)
         model_checkpoint = torch.load(args.restore_file, map_location=device)
         self.model.load_state_dict(model_checkpoint['state_dict'])
         self.model.eval()
@@ -250,7 +250,9 @@ class SourceCodeBP():
         # Extract the last channel of the code message
         belief = self.M_to_grid*self.npot
         belief /= torch.sum(belief, -1, keepdim=True)
+        print(belief.device)
         source_input = belief[:,:,1].reshape(1, 1, self.h, self.w)
+        print(source_input.device)
         self.M_from_grid = self.source.message(source_input)
         # Reshape to send to code
         self.M_to_code = self.M_from_grid.squeeze(0).reshape(-1, self.h*self.w).permute(1, 0)
