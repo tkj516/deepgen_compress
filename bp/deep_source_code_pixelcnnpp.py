@@ -168,8 +168,8 @@ class Source():
         self.ll = self.discretized_mix_logistic_loss(out, torch.cat([x_t, 1-x_t], 0))
         self.prob = torch.exp(self.ll)
 
-        b, _, h, w = self.ll.shape
-        message = torch.zeros(b, 2, h, w).to(device)
+        b, h, w = self.ll.shape
+        message = torch.zeros(1, 2, h, w).to(device)
         message[:,0,:,:] = torch.where(x==0, self.prob[0, ...], self.prob[1, ...])
         message[:,1,:,:] = torch.where(x==1, self.prob[0, ...], self.prob[1, ...])
         message /= torch.sum(message, 1, keepdim=True)
