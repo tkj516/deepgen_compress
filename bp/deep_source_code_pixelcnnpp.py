@@ -11,9 +11,9 @@ from torch.utils.data import Dataset, DataLoader
 from functools import partial
 import matplotlib.pyplot as plt
 
-from code_bp_torch import CodeBP
-from grid_bp_torch import GridBP
-from grid_gibbs import GibbsSampler
+from torch_parallel.code_bp_torch import CodeBP
+from torch_parallel.grid_bp_torch import GridBP
+from torch_parallel.grid_gibbs import GibbsSampler
 from pixel_models.pixelcnnpp import *
 
 parser = argparse.ArgumentParser(description='Belief propagation training arguments')
