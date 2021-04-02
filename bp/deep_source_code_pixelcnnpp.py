@@ -306,7 +306,7 @@ def test_source_code_bp():
         source_code_bp.generate_sample()
 
     # Print the nll of the sample
-    x_t = source_code_bp.source.transform(source_code_bp.samp.reshape(1, 1, self.h, self.w))
+    x_t = source_code_bp.source.transform(source_code_bp.samp.reshape(1, 1, h, w))
     l = source_code_bp.source.model(x_t, None)
     nll = source_code_bp.source.discretized_mix_logistic_loss(l, x_t)
     print(f"[Negative Log-Likelihood of Input Sample: {-nll.sum([1, 2].item())}")
