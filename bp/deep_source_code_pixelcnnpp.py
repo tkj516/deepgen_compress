@@ -165,6 +165,7 @@ class Source():
         out = self.model(x_t, None)
         ll = self.discretized_mix_logistic_loss(out, x_t)
         prob = torch.exp(ll)
+        print(prob)
 
         b, h, w = ll.shape
         message = torch.zeros(b, 2, h, w).to(device)
@@ -245,7 +246,6 @@ class SourceCodeBP():
         self.M_from_code = self.code.M_out
         # Reshape to send to grid
         self.M_to_grid = self.M_from_code.reshape(self.h, self.w, 2)
-        print(self.M_to_grid)
 
         # Perform one step of source graph belief propagation
         # Extract the last channel of the code message
