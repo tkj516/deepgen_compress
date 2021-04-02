@@ -10,6 +10,7 @@ import torchvision.transforms as T
 from torch.utils.data import Dataset, DataLoader
 from functools import partial
 import matplotlib.pyplot as plt
+import os
 
 from torch_parallel.code_bp_torch import CodeBP
 from torch_parallel.grid_bp_torch import GridBP
