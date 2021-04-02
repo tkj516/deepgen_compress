@@ -163,12 +163,11 @@ class Source():
 
         x_t = self.transform(x)
         out = self.model(x_t, None)
-        print(out.device)
         ll = self.discretized_mix_logistic_loss(out, x_t)
         prob = torch.exp(ll)
 
         b, h, w = ll.shape
-        message = torch.zeros(b, 2, h, w)
+        message = torch.zeros(b, 2, h, w).to(device)
         message[:,0,:,:] = torch.where(x==0, prob, 1-prob)
         message[:,1,:,:] = torch.where(x==1, prob, 1-prob)
 
@@ -253,10 +252,8 @@ class SourceCodeBP():
         belief /= torch.sum(belief, -1, keepdim=True)
         source_input = belief[:,:,1].reshape(1, 1, self.h, self.w)
         self.M_from_grid = self.source.message(source_input)
-        print(self.M_from_grid.device)
         # Permute this output
         self.M_from_grid = self.M_from_grid.squeeze(0).permute(1, 2, 0)
-        print(self.M_from_grid.device)
         # Reshape to send to code
         self.M_to_code = self.M_from_grid.reshape(-1, 2)
 
