@@ -17,6 +17,7 @@ parser.add_argument('--ldpc_mat', type=str, default='../H.mat', help="Path to LD
 parser.add_argument('--load_image', action='store_true', help="Load an image for testing")
 parser.add_argument('--image', type=str, default='S_128.mat', help="Path to loadable image")
 parser.add_argument('--device', type=str, default='cuda:0', help="Device to run the code on")
+parser.add_argument('--num_iters', type=int, default=100, help="Number of bp iterations")
 args = parser.parse_args()
 
 device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
@@ -158,7 +159,7 @@ def test_source_code_bp():
 
     # Decode the code using belief propagation
     print("[Decoding ...]")
-    source_code_bp.decode(num_iter=100)
+    source_code_bp.decode(num_iter=args.num_iters)
 
     # Visualize the decoded image
     fig, ax = plt.subplots(2, 1)
