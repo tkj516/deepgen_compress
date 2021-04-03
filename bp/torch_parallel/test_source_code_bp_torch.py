@@ -6,14 +6,14 @@ from tqdm import tqdm
 import time
 import argparse
 
-from code_bp_torch import CodeBP
+from code_bp_torch_v2 import CodeBP
 from grid_bp_torch import GridBP
 from grid_gibbs import GibbsSampler
 
 parser = argparse.ArgumentParser(description='Belief propagation training arguments')
 parser.add_argument('--height', type=int, default=128, help="Height of image")
 parser.add_argument('--width', type=int, default=128, help="Width of image")
-parser.add_argument('--ldpc_mat', type=str, default='H.mat', help="Path to LDPC matrix")
+parser.add_argument('--ldpc_mat', type=str, default='../H.mat', help="Path to LDPC matrix")
 parser.add_argument('--load_image', action='store_true', help="Load an image for testing")
 parser.add_argument('--image', type=str, default='S_128.mat', help="Path to loadable image")
 parser.add_argument('--device', type=str, default='cuda:0', help="Device to run the code on")
