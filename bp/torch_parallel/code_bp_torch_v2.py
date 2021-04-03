@@ -128,6 +128,8 @@ class CodeBP(nn.Module):
         if self.unequal_neighbors > 0:
             self.Hsx.data = torch.cat([self.Hsx.data, self.temp_column], 1)
 
+        print(self.Hsx.data.shape)
+
         ll_diff_prod = 1 - 2*x
         # Calculate all the log-likelihood terms that will be multiplied at each factor
         ll_diff = torch.tanh(self.Hsx.data[grid, variable_neighbors])
