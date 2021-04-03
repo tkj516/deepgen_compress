@@ -127,8 +127,7 @@ class CodeBP(nn.Module):
         # Append temporary column if unequal number of variable neighbors per factor node
         if self.unequal_neighbors > 0:
             self.Hsx.data = torch.cat([self.Hsx.data, self.temp_column], 1)
-
-        print(self.Hsx.data.shape)
+            self.Hxs.data = torch.cat([self.Hxs.data, self.temp_column], 1)
 
         ll_diff_prod = 1 - 2*x
         # Calculate all the log-likelihood terms that will be multiplied at each factor
@@ -160,6 +159,7 @@ class CodeBP(nn.Module):
         # Remove the added column if used
         if self.unequal_neighbors > 0:
             self.Hsx.data = self.Hsx.data[:, :-1]
+            self.Hxs.data = self.Hxs.data[:, :-1]
 
         #####################################################################################################
         # Outgoing super edge messages
