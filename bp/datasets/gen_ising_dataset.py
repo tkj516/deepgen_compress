@@ -2,7 +2,7 @@ import numpy as np
 import os
 import argparse
 
-from ..torch_parallel.grid_gibbs import GibbsSampler
+from bp.torch_parallel.grid_gibbs import GibbsSampler
 
 parser = argparse.ArgumentParser(description='Dataset generation arguments')
 parser.add_argument('--height', type=int, default=28, help="Height of image")
