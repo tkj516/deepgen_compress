@@ -22,6 +22,7 @@ parser = argparse.ArgumentParser(description='Belief propagation training argume
 parser.add_argument('--ldpc_mat', type=str, default='../H_28.mat', help="Path to LDPC matrix")
 parser.add_argument('--device', type=str, default='cuda:0', help="Device to run the code on")
 parser.add_argument('--restore_file', type=str, default='.', help="Directory with checkpoint")
+parser.add_argument('--arch', type=str, default='pixelcnn', help="Type of architecture")
 args = parser.parse_args()
 
 device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
@@ -176,7 +177,8 @@ class SourceCodeBP():
                  stay=0.9,
                  alpha=0.8,
                  doperate=0.04,
-                 n_bits=1):
+                 n_bits=1,
+                 arch='pixelcnn'):
 
         # Store the parameters
         self.h = h
@@ -186,6 +188,7 @@ class SourceCodeBP():
         self.alpha = alpha
         self.doperate = doperate
         self.n_bits=n_bits
+        self.arch = arch
 
         # Store the parity check matrix
         self.H = H
@@ -202,7 +205,7 @@ class SourceCodeBP():
         print("[Setup the sampler ...]")
 
         # Setup the source graph
-        self.source = Source(image_dims=(1, self.h, self.w))
+        self.source = Source(arch=self.arch, image_dims=(1, self.h, self.w))
         print("[Setup the source graph ...]")
 
         # Setup the code graph
@@ -302,7 +305,7 @@ def test_source_code_bp():
     H = torch.FloatTensor(loadmat(args.ldpc_mat)['Hf']).to(device)
 
     # Intialize the source-code decoding graph
-    source_code_bp = SourceCodeBP(H, h=h, w=w)
+    source_code_bp = SourceCodeBP(H, h=h, w=w, arch=args.arch)
 
     # Either load a sample image or generate one using Gibb's sampling
     print("[Generating the sample ...]")
