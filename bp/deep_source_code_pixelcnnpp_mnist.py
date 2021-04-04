@@ -17,6 +17,7 @@ from torch_parallel.code_bp_torch import CodeBP
 from torch_parallel.grid_bp_torch import GridBP
 from torch_parallel.grid_gibbs import GibbsSampler
 from pixel_models.pixelcnnpp import *
+from pixel_models.pixelcnn import *
 
 parser = argparse.ArgumentParser(description='Belief propagation training arguments')
 parser.add_argument('--ldpc_mat', type=str, default='../H_28.mat', help="Path to LDPC matrix")
