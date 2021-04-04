@@ -201,7 +201,7 @@ class SourceCodeBP():
         self.target_transform = None
 
         # Setup the MNIST dataset
-        self.dataset = MNIST('../MNIST', train=True, transform=self.transform, target_transform=self.target_transform)
+        self.dataset = MNIST('../../MNIST', train=True, transform=self.transform, target_transform=self.target_transform)
         print("[Setup the sampler ...]")
 
         # Setup the source graph
