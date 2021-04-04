@@ -137,7 +137,10 @@ class CodeBP(nn.Module):
         # Now calculate the log-likelihood product for each check variable
         ll_diff_prod *= torch.prod(ll_diff.masked_fill(zero_check, 1), -1, keepdim=True)
         # Caculates the number of null neighbors at each factor
-        null_neighbors = torch.sum(zero_check.float(), -1, keepdim=True)
+        if self.unequal_neighbors > 0:
+            null_neighbors = torch.sum(zero_check[:, :-1].float(), -1, keepdim=True)
+        else:
+            null_neighbors = torch.sum(zero_check.float(), -1, keepdim=True)
 
         # Greater than one null neighbor
         check = torch.nonzero((null_neighbors > 1).float())
