@@ -159,7 +159,6 @@ class Source():
 
         elif self.arch == 'pixelcnn':
             x_t = self.transform(x)
-            # First dimension contains true probs and second contains probs of inverted values
             out = self.model(x_t, None)
             message = F.softmax(out, 1).squeeze(2)
 
@@ -249,6 +248,7 @@ class SourceCodeBP():
     def encode(self):
 
         self.x = (self.H @ self.samp) % 2
+        print(self.x)
 
     def decode_step(self):
 
@@ -262,7 +262,7 @@ class SourceCodeBP():
         # Extract the last channel of the code message
         belief = self.M_to_grid*self.npot
         belief /= torch.sum(belief, -1, keepdim=True)
-        source_input = (belief[:,:,1].reshape(1, 1, self.h, self.w) > 0.5).float()
+        source_input = belief[:,:,1].reshape(1, 1, self.h, self.w)
         self.M_from_grid = self.source.message(source_input)
         # Permute this output
         self.M_from_grid = self.M_from_grid.squeeze(0).permute(1, 2, 0)
