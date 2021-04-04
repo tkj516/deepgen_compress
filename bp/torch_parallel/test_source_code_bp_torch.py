@@ -120,7 +120,7 @@ class SourceCodeBP():
             self.B /= torch.sum(self.B, -1).unsqueeze(-1)
 
             # Termination condition to end belief propagation
-            if torch.sum(torch.abs(self.B[..., 1] - B_old)).item() < 0.5:
+            if torch.sum(torch.abs(self.B[..., 1] - B_old)).item() < 0.2:
                 break
             B_old = self.B[..., 1]
 
