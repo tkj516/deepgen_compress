@@ -13,7 +13,7 @@ from functools import partial
 import matplotlib.pyplot as plt
 import os
 
-from torch_parallel.code_bp_torch import CodeBP
+from torch_parallel.code_bp_torch_v2 import CodeBP
 from torch_parallel.grid_bp_torch import GridBP
 from torch_parallel.grid_gibbs import GibbsSampler
 from pixel_models.pixelcnnpp import *
