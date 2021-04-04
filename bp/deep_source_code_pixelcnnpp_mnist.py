@@ -198,7 +198,7 @@ class SourceCodeBP():
         self.transform = T.Compose([T.ToTensor(),                                            # tensor in [0,1]
                                     lambda x: x.mul(255).div(2**(8-self.n_bits)).floor(),    # lower bits
                                     partial(self.preprocess)])                # to model space [-1,1]
-        self.target_transform = (lambda y: torch.eye(args.n_cond_classes)[y]) if args.n_cond_classes else None
+        self.target_transform = None
 
         # Setup the MNIST dataset
         self.dataset = MNIST('../MNIST', train=True, transform=self.transform, target_transform=self.target_transform)
