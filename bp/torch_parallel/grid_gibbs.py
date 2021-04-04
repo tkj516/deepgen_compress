@@ -117,7 +117,7 @@ class GibbsSampler():
 def test_gibbs_sampler():
 
     gibbs_sampler = GibbsSampler(args.height, args.width, args.p, args.stay)
-    gibbs_sampler.sampler(2000)
+    gibbs_sampler.sampler(1000)
 
     fig, ax = plt.subplots()
     ax.imshow(gibbs_sampler.samp)
