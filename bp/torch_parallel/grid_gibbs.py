@@ -3,6 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from scipy.linalg import norm
+import argparse
+
+parser = argparse.ArgumentParser(description='Gibbs generation arguments')
+parser.add_argument('--height', type=int, default=28, help="Height of image")
+parser.add_argument('--width', type=int, default=28, help="Width of image")
+parser.add_argument('--p', type=float, default=0.5, help="Node probability")
+parser.add_argument('--stay', type=float, default=0.9, help="Edge probability")
 
 class GibbsSampler():
 
@@ -108,7 +115,7 @@ class GibbsSampler():
 
 def test_gibbs_sampler():
 
-    gibbs_sampler = GibbsSampler(32, 32, 0.5, 0.9)
+    gibbs_sampler = GibbsSampler(args.height, args.width, args.p, args.stay)
     gibbs_sampler.sampler(2000)
 
     fig, ax = plt.subplots()
