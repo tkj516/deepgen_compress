@@ -10,6 +10,7 @@ parser.add_argument('--height', type=int, default=28, help="Height of image")
 parser.add_argument('--width', type=int, default=28, help="Width of image")
 parser.add_argument('--p', type=float, default=0.5, help="Node probability")
 parser.add_argument('--stay', type=float, default=0.9, help="Edge probability")
+args = parser.parse_args()
 
 class GibbsSampler():
 
