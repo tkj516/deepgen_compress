@@ -5,13 +5,6 @@ from tqdm import tqdm
 from scipy.linalg import norm
 import argparse
 
-parser = argparse.ArgumentParser(description='Gibbs generation arguments')
-parser.add_argument('--height', type=int, default=28, help="Height of image")
-parser.add_argument('--width', type=int, default=28, help="Width of image")
-parser.add_argument('--p', type=float, default=0.5, help="Node probability")
-parser.add_argument('--stay', type=float, default=0.9, help="Edge probability")
-args = parser.parse_args()
-
 class GibbsSampler():
 
     def __init__(self, h, w, p=0.5, stay=0.9):
@@ -120,6 +113,13 @@ class GibbsSampler():
                     break
 
 def test_gibbs_sampler():
+
+    parser = argparse.ArgumentParser(description='Gibbs generation arguments')
+    parser.add_argument('--height', type=int, default=28, help="Height of image")
+    parser.add_argument('--width', type=int, default=28, help="Width of image")
+    parser.add_argument('--p', type=float, default=0.5, help="Node probability")
+    parser.add_argument('--stay', type=float, default=0.9, help="Edge probability")
+    args = parser.parse_args()
 
     gibbs_sampler = GibbsSampler(args.height, args.width, args.p, args.stay)
     gibbs_sampler.sampler(1000)
