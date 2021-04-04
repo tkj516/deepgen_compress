@@ -45,7 +45,7 @@ class CodeBP(nn.Module):
         # Keep track if unequal variable neighbors
         # Create a temporary column to attend in this case
         self.unequal_neighbors = self.K
-        self.temp_column = torch.zeros(self.K, 1).to(self.H.device)
+        self.temp_column = float('inf')*torch.ones(self.K, 1).to(self.H.device)
 
         # Create a sparse matrix
         sp_H = csr_matrix(self.H.cpu().numpy())
@@ -58,7 +58,6 @@ class CodeBP(nn.Module):
             if len(self.neighbors_of_factor[a]) == self.max_variable_neighbors + 1:
                 self.neighbors_of_factor[a].pop(0)
                 self.unequal_neighbors -= 1
-                self.temp_column[a] = float('inf')
 
     def forward(self, ps, x, Min):
         """
