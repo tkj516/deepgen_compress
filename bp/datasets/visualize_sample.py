@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(description='Dataset visualization arguments')
 parser.add_argument('--root', type=str, default='data', help="Directory to store images")
+parser.add_argument('--choose_idx', type=int, help="Choose index to display")
 args = parser.parse_args()
 
 if __name__ == "__main__":
@@ -18,7 +19,10 @@ if __name__ == "__main__":
     num_images = len(files)
 
     # Choose a random image from the dataset
-    idx = np.random.randint(0, num_images)
+    if args.choose_idx is None:
+        idx = np.random.randint(0, num_images)
+    else:
+        idx = args.choose_idx
 
     fix, ax = plt.subplots()
     ax.imshow(np.load(os.path.join(args.root, files[idx])))
