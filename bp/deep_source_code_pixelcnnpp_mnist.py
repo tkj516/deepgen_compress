@@ -310,10 +310,7 @@ def test_source_code_bp():
 
     # Either load a sample image or generate one using Gibb's sampling
     print("[Generating the sample ...]")
-    if args.load_image:
-        source_code_bp.samp = torch.FloatTensor(loadmat(args.image)['Sb']).reshape(-1, 1).to(device)
-    else:
-        source_code_bp.generate_sample()
+    source_code_bp.generate_sample()
     
     # Encode the sample using the LDPC matrix
     print("[Encoding the sample ...]")
