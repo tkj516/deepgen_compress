@@ -16,6 +16,8 @@ class GibbsSampler():
 
     def __init__(self, h, w, p=0.5, stay=0.9):
 
+        print("here")
+
         # Get the height and width of the image
         self.h = h
         self.w = w
