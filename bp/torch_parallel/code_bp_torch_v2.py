@@ -43,7 +43,7 @@ class CodeBP(nn.Module):
         self.neighbors_of_variable = [[] for _ in range(self.N)]
 
         # Keep track if unequal variable neighbors
-        # Create a temporary column to attend in this case
+        # Create a temporary column to append in this case
         self.unequal_neighbors = self.K
         self.temp_column = float('inf')*torch.ones(self.K, 1).to(self.H.device)
 
