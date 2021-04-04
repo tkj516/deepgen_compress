@@ -33,6 +33,7 @@ if __name__ == "__main__":
     while count < args.num_images:
 
         # Sample a new image
+        sampler.reset()
         sampler.sampler(1000)
         sample = sampler.samp
         sample_hash = tuple(sample.reshape(-1, ))

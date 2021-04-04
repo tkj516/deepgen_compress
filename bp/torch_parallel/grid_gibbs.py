@@ -92,6 +92,11 @@ class GibbsSampler():
         # Change the mask to update the other color nodes
         self.mask = 1 - self.mask
 
+    def reset(self):
+
+        self.samp = None
+        self.sdist = None
+
     def set_sample(self, samp):
 
         self.samp = samp
