@@ -196,8 +196,8 @@ class SourceCodeBP():
 
         # Setup the transforms
         self.transform = T.Compose([T.ToTensor(),                                            # tensor in [0,1]
-                                    lambda x: x.mul(255).div(2**(8-self.n_bits)).floor(),    # lower bits
-                                    partial(self.preprocess)])                # to model space [-1,1]
+                                    lambda x: x.mul(255).div(2**(8-self.n_bits)).floor()])    # lower bits
+                                    #partial(self.preprocess)])                # to model space [-1,1]
         self.target_transform = None
 
         # Setup the MNIST dataset
