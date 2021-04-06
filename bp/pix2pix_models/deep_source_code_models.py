@@ -93,6 +93,7 @@ class DeepSourceCode(BaseModel):
 
         self.sampler.sampler(1000)
         self.samp = torch.FloatTensor(self.sampler.samp.reshape(-1, 1)).to(self.device)
+        print(self.sampe)
 
     def encode(self):
 
