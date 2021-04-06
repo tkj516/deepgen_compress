@@ -112,6 +112,7 @@ class DeepSourceCode(BaseModel):
         source_input = intermediate_B[..., 1].reshape(1, 1, self.h, self.w).float()
 
         # Perform one step of source graph belief propagation
+        print(source_input)
         self.M_from_grid = torch.sigmoid(self.source(source_input, self.x.reshape(-1, 1, self.h//4, self.w//4))).reshape(1, 1)
         # Reshape to send to code
         self.M_to_code = torch.cat([(1-self.M_from_grid)*torch.ones(self.N, 1).to(self.device), self.M_from_grid*torch.ones(self.N, 1).to(self.device)], -1)
@@ -129,8 +130,6 @@ class DeepSourceCode(BaseModel):
             self.decode_step()
 
             # Calculate the belief
-            print(self.M_from_grid)
-            print(self.M_to_grid)
             self.B = self.M_from_grid * self.M_to_grid * self.npot
             self.B /= torch.sum(self.B, -1).unsqueeze(-1)
 
