@@ -129,11 +129,8 @@ class DeepSourceCode(BaseModel):
             self.decode_step()
 
             # Calculate the belief
-            print(self.M_from_grid)
-            print(self.M_to_grid)
             self.B = self.M_from_grid * self.M_to_grid * self.npot
             self.B /= torch.sum(self.B, -1).unsqueeze(-1)
-            print(self.B)
 
             # Termination condition to end belief propagation
             if torch.sum(torch.abs(self.B[..., 1] - B_old)).item() < 0.5:
