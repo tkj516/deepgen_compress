@@ -6,7 +6,7 @@ import time
 
 from .deep_source_code_base import BaseModel
 from . import networks_projection as networks
-from torch_parallel.code_bp_torch import CodeBP
+from torch_parallel.code_bp_torch_v2 import CodeBP
 from torch_parallel.grid_gibbs import GibbsSampler
 
 class DeepSourceCode(BaseModel):
