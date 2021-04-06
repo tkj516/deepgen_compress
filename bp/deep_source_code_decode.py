@@ -170,8 +170,8 @@ def test_source_code_bp():
     plt.tight_layout()
     plt.show()
 
-    print(source_code_bp.samp[source_code_bp.indices])
-    print(source_code_bp.B.reshape(-1, 1)[source_code_bp.indices])
+    # print(source_code_bp.samp[source_code_bp.indices])
+    # print(source_code_bp.B.reshape(-1, 1)[source_code_bp.indices])
 
 def main():
     # Set up training parameters
