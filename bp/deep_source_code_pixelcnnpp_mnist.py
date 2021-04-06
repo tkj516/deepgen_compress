@@ -160,8 +160,10 @@ class Source():
 
         elif self.arch == 'pixelcnn':
             x_t = self.transform(x)
+            x_t_rot = x_t.rot90(2, [3, 4])
             out = self.model(x_t, None)
-            message = F.softmax(out, 1).squeeze(2)
+            out_rot = self.model(x_t_rot, None).rot90(2, [3, 4])
+            message = F.softmax(out*out_rot, 1).squeeze(2)
 
         else:
             message = None
@@ -249,7 +251,6 @@ class SourceCodeBP():
     def encode(self):
 
         self.x = (self.H @ self.samp) % 2
-        print(self.x)
 
     def decode_step(self):
 
