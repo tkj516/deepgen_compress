@@ -113,7 +113,6 @@ class DeepSourceCode(BaseModel):
 
         # Perform one step of source graph belief propagation
         self.M_from_grid = torch.sigmoid(self.source(source_input, self.x.reshape(-1, 1, self.h//4, self.w//4))).reshape(1, 1)
-        print(self.M_from_grid)
         # Reshape to send to code
         self.M_to_code = torch.cat([(1-self.M_from_grid)*torch.ones(self.N, 1).to(self.device), self.M_from_grid*torch.ones(self.N, 1).to(self.device)], -1)
 
@@ -132,6 +131,7 @@ class DeepSourceCode(BaseModel):
             # Calculate the belief
             self.B = self.M_from_grid * self.M_to_grid * self.npot
             self.B /= torch.sum(self.B, -1).unsqueeze(-1)
+            print(self.B)
 
             # Termination condition to end belief propagation
             if torch.sum(torch.abs(self.B[..., 1] - B_old)).item() < 0.5:
