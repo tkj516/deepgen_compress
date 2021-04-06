@@ -161,9 +161,8 @@ class Source():
         elif self.arch == 'pixelcnn':
             x_t = self.transform(x)
             x_t_rot = x_t.rot90(2, [2, 3])
-            out = self.model(x_t, None)
-            out_rot = self.model(x_t_rot, None).rot90(2, [3, 4])
-            message = F.softmax(out*out_rot, 1).squeeze(2)
+            out = self.model(torch.cat([x_t, x_t_rot], 0), None)
+            message = F.softmax(out[0:1, ...]*out_rot[1:2, ...].rot90(2, [3, 4]), 1).squeeze(2)
 
         else:
             message = None
