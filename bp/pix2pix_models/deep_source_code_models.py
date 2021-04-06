@@ -85,7 +85,7 @@ class DeepSourceCode(BaseModel):
     def doping(self):
 
         self.indices = np.random.randint(self.N, size=int(self.N*self.doperate)+1)
-        self.ps[indices, 0], self.ps[indices, 1] = (self.samp[indices, 0] == 0).float(), (self.samp[indices, 0] == 1).float()
+        self.ps[self.indices, 0], self.ps[self.indices, 1] = (self.samp[self.indices, 0] == 0).float(), (self.samp[self.indices, 0] == 1).float()
         # Update the node potential after doping
         self.npot = self.ps.reshape(self.h, self.w, 2)
 
