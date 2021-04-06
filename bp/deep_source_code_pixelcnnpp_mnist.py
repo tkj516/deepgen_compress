@@ -160,7 +160,7 @@ class Source():
 
         elif self.arch == 'pixelcnn':
             x_t = self.transform(x)
-            x_t_rot = x_t.rot90(2, [3, 4])
+            x_t_rot = x_t.rot90(2, [2, 3])
             out = self.model(x_t, None)
             out_rot = self.model(x_t_rot, None).rot90(2, [3, 4])
             message = F.softmax(out*out_rot, 1).squeeze(2)
