@@ -258,14 +258,12 @@ class SourceCodeBP():
         self.M_from_code = self.code.M_out
         # Reshape to send to grid
         self.M_to_grid = self.M_from_code.reshape(self.h, self.w, 2)
-        print(self.M_to_grid)
 
         # Perform one step of source graph belief propagation
         # Extract the last channel of the code message
         belief = self.M_to_grid*self.npot
         belief /= torch.sum(belief, -1, keepdim=True)
         source_input = (belief[:,:,1].reshape(1, 1, self.h, self.w) > 0.5).float()
-        print(source_input)
         self.M_from_grid = self.source.message(source_input)
         # Permute this output
         self.M_from_grid = self.M_from_grid.squeeze(0).permute(1, 2, 0)
