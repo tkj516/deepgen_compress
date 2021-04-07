@@ -157,6 +157,7 @@ class Source():
             message[:,0,:,:] = torch.where(x==0, self.prob[0, ...], self.prob[1, ...])
             message[:,1,:,:] = torch.where(x==1, self.prob[0, ...], self.prob[1, ...])
             message /= torch.sum(message, 1, keepdim=True)
+            print(message)
 
         elif self.arch == 'pixelcnn':
             x_t = self.transform(x)
