@@ -327,7 +327,7 @@ def test_source_code_bp():
 
     # Visualize the decoded image
     fig, ax = plt.subplots(3, 1)
-    ax[0].imshow(source_code_bp.samp.cpu().numpy().reshape(args.h, args.w))
+    ax[0].imshow(source_code_bp.samp.cpu().numpy().reshape(28, 28))
     ax[0].set_title("Source Image")
     ax[1].imshow((source_code_bp.npot.cpu()[..., 1] > 0.5).float().numpy())
     ax[1].set_title("Doping samples")
