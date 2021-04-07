@@ -147,6 +147,7 @@ class Source():
 
         if self.arch == 'pixelcnnpp':
             x_t = self.transform(x)
+            print(x_t)
             # First dimension contains true probs and second contains probs of inverted values
             out = self.model(torch.cat([x_t, -1*x_t], 0), None)
             self.ll = self.discretized_mix_logistic_loss(out, torch.cat([x_t, -1*x_t], 0))
