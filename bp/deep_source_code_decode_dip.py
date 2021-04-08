@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser(description='Belief propagation training argume
 parser.add_argument('--ldpc_mat', type=str, default='H_28.mat', help="Path to LDPC matrix")
 parser.add_argument('--device', type=str, default='cuda:0', help="Device to run the code on")
 parser.add_argument('--restore_file', type=str, default='/fs/data/tejasj/Masters_Thesis/pixel_models/results/pixelcnnpp/2021-04-03_02-38-57/checkpoint.pt', help="Directory with checkpoint")
-parser.add_argument('--arch', type=str, default='pixelcnn', help="Type of architecture")
+parser.add_argument('--arch', type=str, default='pixelcnnpp', help="Type of architecture")
 parser.add_argument('--num_iter', type=int, default=100, help="Number of bp iterations")
 args = parser.parse_args()
 
