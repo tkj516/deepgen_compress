@@ -64,8 +64,8 @@ class Source():
 
         # Load the model
         if self.arch == 'pixelcnnpp':
-            self.model = MyDataParallel(PixelCNNpp(image_dims, n_channels, n_res_layers, n_logistic_mix,
-                                        n_cond_classes)).to(device)
+            self.model = PixelCNNpp(image_dims, n_channels, n_res_layers, n_logistic_mix,
+                                        n_cond_classes).to(device)
         elif self.arch == 'pixelcnn':
             n_res_layers = 12
             self.model = MyDataParallel(PixelCNN(image_dims, n_bits, n_channels, n_out_conv_channels, kernel_size,
