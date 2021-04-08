@@ -164,7 +164,7 @@ def test_source_code_decode():
     fig, ax = plt.subplots(2, 1)
     ax[0].imshow(samp.cpu().numpy().reshape(h, w))
     ax[0].set_title("Source Image")
-    ax[1].imshow((F.tanh(decoder.input.reshape(h, w)).detach().cpu().numpy() + 1)/2)
+    ax[1].imshow((F.tanh(decoder.input.reshape(h, w)).detach().cpu() > 0).float().numpy())
     ax[1].set_title("Reconstructed Image")
     plt.tight_layout()
     plt.show()
