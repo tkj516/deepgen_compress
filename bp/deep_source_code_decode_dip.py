@@ -61,6 +61,7 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
 
         self.H = H
+        self.n_bits = n_bits
         self.arch = arch
         self.c, self.h, self.w = image_dims
 
