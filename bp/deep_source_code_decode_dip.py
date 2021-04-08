@@ -75,6 +75,7 @@ class Decoder(nn.Module):
 
         # Load the model
         if self.arch == 'pixelcnnpp':
+            print("here")
             self.source = MyDataParallel(PixelCNNpp(image_dims, n_channels, n_res_layers, n_logistic_mix,
                                         n_cond_classes)).to(device)
         elif self.arch == 'pixelcnn':
