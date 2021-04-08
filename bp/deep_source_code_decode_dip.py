@@ -112,7 +112,7 @@ class Decoder(nn.Module):
         # Apply similarity loss
         similarity_loss = -1*self.cosine_similarity(encodings, targets)
 
-        return logistic_loss + similarity_loss
+        return logistic_loss, similarity_loss
 
 def test_source_code_decode():
 
@@ -149,13 +149,16 @@ def test_source_code_decode():
 
     # Decode the code using belief propagation
     print("[Decoding ...]")
-    for _ in range(args.num_iter):
+    for i in range(args.num_iter):
         decoder()
 
         optimizer.zero_grad()
-        loss = decoder.calculate_loss(targets)
+        l_loss, s_loss = decoder.calculate_loss(targets)
+        loss = l_loss + s_loss
         loss.backward()
         optimizer.step()
+
+        print(f'Iteration {i}:- Logistic Loss: {l_loss.item()}, Similarity Loss: {s_loss.item()}')
 
     # Visualize the decoded image
     fig, ax = plt.subplots(2, 1)
