@@ -65,7 +65,7 @@ class Decoder(nn.Module):
         self.c, self.h, self.w = image_dims
 
         # Define a parameter for the input image
-        self.input = nn.Parameter(torch.zeros(1, self.c, self.h, self.w))
+        self.input = nn.Parameter(torch.zeros(1, self.c, self.h, self.w).to(device))
 
         # Define the pixelcnn architecture that is being used
         self.arch = arch
