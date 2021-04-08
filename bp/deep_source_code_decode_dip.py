@@ -154,7 +154,7 @@ def test_source_code_decode():
 
         optimizer.zero_grad()
         l_loss, s_loss = decoder.calculate_loss(targets)
-        loss = l_loss + s_loss
+        loss = l_loss + 100*s_loss
         loss.backward()
         optimizer.step()
 
