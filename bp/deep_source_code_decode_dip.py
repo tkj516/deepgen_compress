@@ -14,9 +14,6 @@ from functools import partial
 import matplotlib.pyplot as plt
 import os
 
-from torch_parallel.code_bp_torch_v2 import CodeBP
-from torch_parallel.grid_bp_torch import GridBP
-from torch_parallel.grid_gibbs import GibbsSampler
 from pixel_models.pixelcnnpp import *
 from pixel_models.pixelcnn import *
 
@@ -75,8 +72,8 @@ class Decoder(nn.Module):
 
         # Load the model
         if self.arch == 'pixelcnnpp':
-            self.source = MyDataParallel(PixelCNNpp(image_dims, n_channels, n_res_layers, n_logistic_mix,
-                                        n_cond_classes)).to(device)
+            self.source = PixelCNNpp(image_dims, n_channels, n_res_layers, n_logistic_mix,
+                                        n_cond_classes).to(device)
         elif self.arch == 'pixelcnn':
             n_res_layers = 12
             self.source = MyDataParallel(PixelCNN(image_dims, n_bits, n_channels, n_out_conv_channels, kernel_size,
