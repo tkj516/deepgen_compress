@@ -75,7 +75,6 @@ class Decoder(nn.Module):
 
         # Load the model
         if self.arch == 'pixelcnnpp':
-            print("here")
             self.source = MyDataParallel(PixelCNNpp(image_dims, n_channels, n_res_layers, n_logistic_mix,
                                         n_cond_classes)).to(device)
         elif self.arch == 'pixelcnn':
@@ -130,7 +129,7 @@ def test_source_code_decode():
     decoder = Decoder(H)
 
     # Setup an optimizer for the input image
-    optimizer = torch.optim.Adam(params=[decoder.input], le=1e-4, betas=(0.9, 0.999))
+    optimizer = torch.optim.Adam(params=[decoder.input], lr=1e-4, betas=(0.9, 0.999))
 
     # Either load a sample image or generate one using Gibb's sampling
     print("[Generating the sample ...]")
