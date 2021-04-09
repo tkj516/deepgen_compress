@@ -103,7 +103,7 @@ class Decoder(nn.Module):
     def forward(self):
 
         # Normalize the input in the correct range for the source model
-        self.normalized_input = self.source(self.massager(self.input))
+        self.normalized_input = self.source(self.massager(self.input).clamp(min=0.0, max=1.0))
 
     def calculate_loss(self, targets):
 
@@ -136,7 +136,7 @@ def test_source_code_decode():
     decoder = Decoder(H).to(device)
 
     # Setup an optimizer for the input image
-    optimizer = torch.optim.Adam(params=decoder.massager.parameters(), lr=1e-4, betas=(0.9, 0.999))
+    optimizer = torch.optim.Adam(params=decoder.massager.parameters(), lr=5e-3, betas=(0.9, 0.999))
 
     # Either load a sample image or generate one using Gibb's sampling
     print("[Generating the sample ...]")
