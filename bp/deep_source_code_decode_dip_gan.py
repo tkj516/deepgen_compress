@@ -103,7 +103,9 @@ class Decoder(nn.Module):
     def calculate_loss(self, targets):
 
         # Threshold the input
-        thresholded_input = torch.tanh(float('inf')*self.normalized_input)
+        thresholded_input = self.normalized_input.masked_fill(self.normalized_input > 0, 1)
+        thresholded_input = thresholded_input.masked_fill(self.normalized_input <= 0, -1)
+        print(thresholded_input)
 
         # Get the loss from the pixelcnn
         # logistic_loss = discretized_mix_logistic_loss(self.logits, thresholded_input, self.n_bits)
