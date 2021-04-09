@@ -66,14 +66,14 @@ class Decoder(nn.Module):
         self.c, self.h, self.w = image_dims
 
         # Define a parameter for the input image
-        self.input = torch.rand(1, 1, 100).to(device)
+        self.input = torch.rand(1, 100).to(device)
 
         self.massager = nn.Sequential(nn.Linear(100, 512),
                                       nn.Tanh(),
                                       nn.Linear(512, 100),
                                       nn.Sigmoid())
         self.massager.train()
-        
+
         # Define the pixelcnn architecture that is being used
         self.arch = arch
 
