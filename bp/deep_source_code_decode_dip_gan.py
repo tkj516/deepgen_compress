@@ -130,7 +130,7 @@ def test_source_code_decode():
     decoder = Decoder(H)
 
     # Setup an optimizer for the input image
-    optimizer = torch.optim.Adam(params=[decoder.input], lr=1e-2, betas=(0.9, 0.999))
+    optimizer = torch.optim.Adam(params=[decoder.input], lr=1e-3, betas=(0.5, 0.999))
 
     # Either load a sample image or generate one using Gibb's sampling
     print("[Generating the sample ...]")
