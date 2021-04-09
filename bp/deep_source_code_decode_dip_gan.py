@@ -132,7 +132,7 @@ def test_source_code_decode():
     H = torch.FloatTensor(loadmat(args.ldpc_mat)['Hf']).to(device)
 
     # Intialize the decoder
-    decoder = Decoder(H)
+    decoder = Decoder(H).to(device)
 
     # Setup an optimizer for the input image
     optimizer = torch.optim.Adam(params=decoder.massager.parameters(), lr=1e-3, betas=(0.5, 0.999))
