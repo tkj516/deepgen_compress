@@ -103,7 +103,7 @@ class Decoder(nn.Module):
     def forward(self):
 
         # Normalize the input in the correct range for the source model
-        self.normalized_input = self.source(self.massager(self.input).clamp(min=0.0, max=1.0))
+        self.normalized_input = self.source(self.massager(self.input))
 
     def calculate_loss(self, targets):
 
