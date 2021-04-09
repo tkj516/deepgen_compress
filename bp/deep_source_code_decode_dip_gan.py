@@ -94,7 +94,7 @@ class Decoder(nn.Module):
         # self.source.eval()
 
         self.source = torch.hub.load("Lornatang/GAN-PyTorch", "mnist", pretrained=True, progress=True, verbose=False)
-        self.source.train()
+        self.source.eval()
         self.source = self.source.to(device)
 
         # Define a few loss functions
@@ -138,7 +138,6 @@ def test_source_code_decode():
 
     # Setup an optimizer for the input image
     optimizer = torch.optim.Adam(params=decoder.massager.parameters(), lr=1e-3, betas=(0.5, 0.999))
-    optimizer2 = torch.optim.Adam(params=decoder.source.parameters(), lr=1e-6, betas=(0.5, 0.999))
 
     # Either load a sample image or generate one using Gibb's sampling
     print("[Generating the sample ...]")
@@ -164,12 +163,10 @@ def test_source_code_decode():
         decoder()
 
         optimizer.zero_grad()
-        optimizer2.zero_grad()
         s_loss = decoder.calculate_loss(targets)
         loss = s_loss
         loss.backward()
         optimizer.step()
-        optimizer2.step()
 
         print(f'Iteration {i}:- Similarity Loss: {s_loss.item()}')
 
