@@ -66,7 +66,12 @@ class Decoder(nn.Module):
         self.c, self.h, self.w = image_dims
 
         # Define a parameter for the input image
-        self.input = nn.Parameter(torch.zeros(1, 100).to(device))
+        self.input = torch.rand(1, 100).to(device)
+
+        self.massager = nn.Sequential(nn.Linear(100, 512),
+                                      nn.ReLU(),
+                                      nn.Linear(512, 100),
+                                      nn.Sigmoid())
 
         # Define the pixelcnn architecture that is being used
         self.arch = arch
@@ -98,7 +103,7 @@ class Decoder(nn.Module):
     def forward(self):
 
         # Normalize the input in the correct range for the source model
-        self.normalized_input = self.source(torch.sigmoid(self.input))
+        self.normalized_input = self.source(self.massager(self.input))
 
     def calculate_loss(self, targets):
 
@@ -130,7 +135,7 @@ def test_source_code_decode():
     decoder = Decoder(H)
 
     # Setup an optimizer for the input image
-    optimizer = torch.optim.Adam(params=[decoder.input], lr=1e-3, betas=(0.5, 0.999))
+    optimizer = torch.optim.Adam(params=[decoder.massager.parameters()], lr=1e-3, betas=(0.5, 0.999))
 
     # Either load a sample image or generate one using Gibb's sampling
     print("[Generating the sample ...]")
