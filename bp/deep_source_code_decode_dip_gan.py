@@ -104,14 +104,13 @@ class Decoder(nn.Module):
 
         # Threshold the input
         thresholded_input = torch.tanh(float('inf')*self.normalized_input)
-        print(thresholded_input)
 
         # Get the loss from the pixelcnn
         # logistic_loss = discretized_mix_logistic_loss(self.logits, thresholded_input, self.n_bits)
 
         # Get the encoding loss using the LDPC matrix
         encodings = self.H @ ((thresholded_input + 1) / 2).reshape(-1, 1)
-        encodings = torch.where(encodings % 2 == 0, 0, 1)
+        encodings = (torch.cos(np.pi*encodings) + 1) / 2
 
         # Apply similarity loss
         similarity_loss = -1*self.cosine_similarity(encodings, targets)
