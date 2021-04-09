@@ -72,7 +72,8 @@ class Decoder(nn.Module):
                                       nn.Tanh(),
                                       nn.Linear(512, 100),
                                       nn.Sigmoid())
-
+        self.massager.train()
+        
         # Define the pixelcnn architecture that is being used
         self.arch = arch
 
