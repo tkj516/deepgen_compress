@@ -99,6 +99,7 @@ class Decoder(nn.Module):
 
         # Normalize the input in the correct range for the source model
         self.normalized_input = self.source(torch.sigmoid(self.input))
+        print(self.normalized_input)
 
     def calculate_loss(self, targets):
 
@@ -111,8 +112,6 @@ class Decoder(nn.Module):
         # Get the encoding loss using the LDPC matrix
         encodings = self.H @ ((thresholded_input + 1) / 2).reshape(-1, 1)
         encodings = torch.where(encodings % 2 == 0, 0, 1)
-
-        print(encodings)
 
         # Apply similarity loss
         similarity_loss = -1*self.cosine_similarity(encodings, targets)
