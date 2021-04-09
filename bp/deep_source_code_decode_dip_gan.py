@@ -112,6 +112,8 @@ class Decoder(nn.Module):
         encodings = self.H @ ((thresholded_input + 1) / 2).reshape(-1, 1)
         encodings = torch.where(encodings % 2 == 0, 0, 1)
 
+        print(encodings)
+
         # Apply similarity loss
         similarity_loss = -1*self.cosine_similarity(encodings, targets)
 
