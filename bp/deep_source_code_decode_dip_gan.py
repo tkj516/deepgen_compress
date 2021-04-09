@@ -69,7 +69,7 @@ class Decoder(nn.Module):
         self.input = torch.rand(1, 100).to(device)
 
         self.massager = nn.Sequential(nn.Linear(100, 512),
-                                      nn.ReLU(),
+                                      nn.Tanh(),
                                       nn.Linear(512, 100),
                                       nn.Sigmoid())
 
