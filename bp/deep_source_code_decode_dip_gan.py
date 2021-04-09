@@ -118,7 +118,8 @@ class Decoder(nn.Module):
         encodings = (torch.cos(np.pi*encodings) + 1) / 2
 
         # Apply similarity loss
-        similarity_loss = -1*self.cosine_similarity(encodings, targets)
+        # similarity_loss = -1*self.cosine_similarity(encodings, targets)
+        similarity_loss = self.L1loss(encodings, targets)
 
         return similarity_loss
 
