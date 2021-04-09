@@ -87,9 +87,9 @@ class Decoder(nn.Module):
         # self.source.load_state_dict(source_checkpoint['state_dict'])
         # self.source.eval()
 
-        source = torch.hub.load("Lornatang/GAN-PyTorch", "mnist", pretrained=True, progress=True, verbose=False)
-        source.eval()
-        source = source.to(device)
+        self.source = torch.hub.load("Lornatang/GAN-PyTorch", "mnist", pretrained=True, progress=True, verbose=False)
+        self.source.eval()
+        self.source = self.source.to(device)
 
         # Define a few loss functions
         self.L1loss = nn.L1Loss()
