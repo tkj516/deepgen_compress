@@ -23,7 +23,7 @@ parser = argparse.ArgumentParser(description='Belief propagation training argume
 parser.add_argument('--h', type=int, default=28, help="Height of the images")
 parser.add_argument('--w', type=int, default=28, help="Width of the images")
 parser.add_argument('--n_bits', type=int, default=2, help="Number of itensity levels in PixelCNN")
-parser.add_argument('--ldpc_mat', type=str, default='../H_28.mat', help="Path to LDPC matrix")
+parser.add_argument('--ldpc_mat', type=str, default='H_28.mat', help="Path to LDPC matrix")
 parser.add_argument('--device', type=str, default='cuda:0', help="Device to run the code on")
 parser.add_argument('--restore_file_0', type=str, default='/fs/data/tejasj/Masters_Thesis/pixel_models/results/pixelcnn/2021-04-13_05-24-01/checkpoint.pt', help="Directory with checkpoint for orig orientation model")
 parser.add_argument('--restore_file_180', type=str, default='/fs/data/tejasj/Masters_Thesis/pixel_models/results/pixelcnn/2021-04-13_17-08-22/checkpoint.pt', help="Directory with checkpoint for rotated orientation model")
