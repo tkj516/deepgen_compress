@@ -85,8 +85,6 @@ class IsingDataset(Dataset):
         image = np.load(image)
 
         sample = torch.FloatTensor(image).unsqueeze(0)
-        if args.rotate:
-            sample = torch.rot90(sample, 2, dims=[-2, -1])
 
         return sample, torch.tensor([0])
 
