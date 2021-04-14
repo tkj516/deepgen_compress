@@ -218,6 +218,7 @@ class Source():
 
             # Set the inputs -- original and rotated orientation
             x_t = self.transform(x)
+            print(x_t)
             x_t_rot = x_t.rot90(2, [2, 3])
             # Get the logits and convert to probabilities
             out_0 = self.convert_logits_to_prob(self.model_0(x_t, None))
