@@ -73,9 +73,6 @@ class IsingDataset(Dataset):
         # Read the training files from the mat file
         self.files = sorted(os.listdir(self.root_dir))[start_idx:end_idx]
 
-        if args.rotate:
-            print("Dataset has been rotated!")
-
     def __len__(self):
         return len(self.files)
 
