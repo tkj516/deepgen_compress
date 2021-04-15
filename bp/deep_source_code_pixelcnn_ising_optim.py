@@ -355,7 +355,7 @@ class SourceCodeBP():
 
         # Pass the probs to the code graph for decoding
         self.code(self.ps, self.x, self.probs.squeeze(0).permute(1, 2, 0).reshape(-1, 2))
-        self.similarity_loss = self.MSEloss(self.probs, self.code.M_out)
+        self.similarity_loss = self.MSEloss(self.probs, self.code.M_out.permute(1, 0).reshape(1, 2, 28, 28))
 
         # Perform a step of optimization
         self.optimizer.zero_grad()
