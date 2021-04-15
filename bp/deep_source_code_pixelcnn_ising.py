@@ -355,6 +355,9 @@ class SourceCodeBP():
             # Compute the number of errors and print some information
             errs = torch.sum(torch.abs((self.B[..., 1] > 0.5).float() - self.samp.reshape(self.h, self.w))).item()
             print(f'Iteration {i}: {errs} errors')
+        
+        print(self.M_from_grid[:5, :5, :])
+        print(self.M_to_grid[:5, :5, :])
 
         end = time.time()
         print(f'Total time taken for decoding is {end - start}s')
