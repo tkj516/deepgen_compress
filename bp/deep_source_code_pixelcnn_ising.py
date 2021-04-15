@@ -305,8 +305,7 @@ class SourceCodeBP():
 
         test = self.samp.reshape(1, 1, self.h, self.w)
         prob = F.softmax(self.source.model_0(self.source.transform(test), None).squeeze(2))
-        print(prob)
-        print(prob.shape)
+        print(prob[0, :, :4, :4])
         exit(0)
 
     def encode(self):
