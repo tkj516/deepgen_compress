@@ -349,6 +349,7 @@ class SourceCodeBP():
         probs = self.source.model_0(torch.tanh(self.train_in), None)
         # Multiply the probs with the doping probability
         self.probs = F.softmax(probs.squeeze(2) * self.npot.permute(2, 0, 1).unsqueeze(0), dim=1)
+        print(self.probs)
 
         # Compute the entropy of the distribution
         self.entropy_loss = torch.mean(-probs * torch.log(probs + 1e-10))
