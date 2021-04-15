@@ -363,6 +363,8 @@ class SourceCodeBP():
         loss.backward()
         self.optimizer.step
 
+        print(f'Entropy Loss: {entropy_loss.item()}, Similarity Loss: {similarity_loss.item()}')
+
     # def decode(self, num_iter=1):
 
     #     # Set the initial beliefs to all nans
