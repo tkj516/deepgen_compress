@@ -59,6 +59,12 @@ class CodeBP(nn.Module):
                 self.neighbors_of_factor[a].pop(0)
                 self.unequal_neighbors -= 1
 
+    def reset(self):
+
+        self.Hsx = nn.Parameter(torch.zeros(self.K, self.N))
+        self.Hxs = nn.Parameter(torch.zeros(self.K, self.N))
+        self.M_out = nn.Parameter(torch.zeros(self.N, 2))
+
     def forward(self, ps, x, Min):
         """
         Min : N x 2
