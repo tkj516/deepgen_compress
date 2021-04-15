@@ -317,12 +317,12 @@ class SourceCodeBP():
     def decode_step(self):
 
         # Perform one step of code graph belief propagation
-        self.code.reset()
-        for _ in range(10):
-            self.code(self.ps, self.x, self.M_to_code)
+        self.code(self.ps, self.x, self.M_to_code)
         self.M_from_code = self.code.M_out
         # Reshape to send to grid
         self.M_to_grid = self.M_from_code.reshape(self.h, self.w, 2)
+
+        return
 
         # Perform one step of source graph belief propagation
         # Extract the last channel of the code message
@@ -348,7 +348,10 @@ class SourceCodeBP():
             self.decode_step()
 
             # Calculate the belief
-            self.B = self.M_from_grid * self.M_to_grid * self.npot
+            if self.M_from_grid is None:
+                self.B = self.M_to_grid * self.npot
+            else:
+                self.B = self.M_from_grid * self.M_to_grid * self.npot
             self.B /= torch.sum(self.B, -1).unsqueeze(-1)
 
             # Termination condition to end belief propagation
