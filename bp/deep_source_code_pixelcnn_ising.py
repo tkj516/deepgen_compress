@@ -301,12 +301,12 @@ class SourceCodeBP():
         self.samp = torch.FloatTensor(self.samp.reshape(-1, 1)).to(device)
 
         # test = self.samp.reshape(1, 1, self.h, self.w)
-        test = torch.randint(high=2, size=(1, 1, self.h, self.w), dtype=torch.float32).to(device)
-        test_t = self.source.transform(test)
-        prob = F.softmax(self.source.model_0(test_t, None).squeeze(2))
-        print(test_t[0, :, :4, :4])
-        print(prob[0, :, :4, :4])
-        exit(0)
+        # test = torch.randint(high=2, size=(1, 1, self.h, self.w), dtype=torch.float32).to(device)
+        # test_t = self.source.transform(test)
+        # prob = F.softmax(self.source.model_0(test_t, None).squeeze(2))
+        # print(test_t[0, :, :4, :4])
+        # print(prob[0, :, :4, :4])
+        # exit(0)
 
     def encode(self):
 
