@@ -351,8 +351,9 @@ class SourceCodeBP():
         self.probs = F.softmax(probs.squeeze(2) * self.npot.permute(2, 0, 1).unsqueeze(0), dim=1)
 
         # Compute the entropy of the distribution
-        print(torch.log(probs + 1e-10))
-        self.entropy_loss = torch.mean(-probs * torch.log(probs + 1e-10))
+        print(self.probs)
+        print(torch.log(self.probs + 1e-10))
+        self.entropy_loss = torch.mean(-self.probs * torch.log(self.probs + 1e-10))
 
         # Pass the probs to the code graph for decoding
         self.code(self.ps, self.x, self.probs.squeeze(0).permute(1, 2, 0).reshape(-1, 2))
