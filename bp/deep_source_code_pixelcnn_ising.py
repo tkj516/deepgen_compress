@@ -284,6 +284,8 @@ class SourceCodeBP():
     def doping(self):
 
         indices = np.random.randint(self.N, size=int(self.N*self.doperate)+1)
+        # Dope the very first sample also
+        self.ps[0, 0], self.ps[0, 1] = (self.samp[0, 0] == 0).float(), (self.samp[0, 0] == 1).float()
         self.ps[indices, 0], self.ps[indices, 1] = (self.samp[indices, 0] == 0).float(), (self.samp[indices, 0] == 1).float()
         # Update the node potential after doping
         self.npot = self.ps.reshape(self.h, self.w, 2)
@@ -356,9 +358,6 @@ class SourceCodeBP():
             errs = torch.sum(torch.abs((self.B[..., 1] > 0.5).float() - self.samp.reshape(self.h, self.w))).item()
             print(f'Iteration {i}: {errs} errors')
         
-        print(self.M_from_grid[:5, :5, :])
-        print(self.M_to_grid[:5, :5, :])
-
         end = time.time()
         print(f'Total time taken for decoding is {end - start}s')
 
