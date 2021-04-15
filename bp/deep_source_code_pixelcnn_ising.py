@@ -279,6 +279,8 @@ class SourceCodeBP():
         # Initialize the messages
         self.M_to_code = None
         self.M_to_grid = None
+        self.M_from_code = None
+        self.M_from_grid = None
         self.B = None
 
     def doping(self):
