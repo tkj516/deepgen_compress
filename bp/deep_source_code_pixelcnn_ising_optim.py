@@ -354,7 +354,7 @@ class SourceCodeBP():
         self.entropy_loss = torch.mean(-probs * torch.log(probs + 1e-10))
 
         # Pass the probs to the code graph for decoding
-        self.code(self.ps, self.x, probs.squeeze(0).permute(1, 2, 0).reshape(-1, 2))
+        self.code(self.ps, self.x, self.probs.squeeze(0).permute(1, 2, 0).reshape(-1, 2))
         self.similarity_loss = self.MSEloss(self.probs, self.code.M_out)
 
         # Perform a step of optimization
