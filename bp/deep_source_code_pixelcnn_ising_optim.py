@@ -283,6 +283,14 @@ class SourceCodeBP():
         self.M_from_grid = None
         self.B = None
 
+        # Trainable input sample
+        self.train_in = torch.zeros(1, 1, self.h, self.w)
+        self.train_in.requires_grad = True
+
+        # Define the optimizer
+        self.MSEloss = torch.nn.MSELoss()
+        self.optimizer = torch.optim.Adam(params=[self.train_in], lr=1e-4, betas=(0.9, 0.999))
+
     def doping(self):
 
         indices = np.random.randint(self.N, size=int(self.N*self.doperate)+1)
@@ -316,55 +324,83 @@ class SourceCodeBP():
 
         self.x = (self.H @ self.samp) % 2
 
+    # def decode_step(self):
+
+    #     # Perform one step of code graph belief propagation
+    #     self.code(self.ps, self.x, self.M_to_code)
+    #     self.M_from_code = self.code.M_out
+    #     # Reshape to send to grid
+    #     self.M_to_grid = self.M_from_code.reshape(self.h, self.w, 2)
+
+    #     # Perform one step of source graph belief propagation
+    #     # Extract the last channel of the code message
+    #     belief = self.M_to_grid * self.npot
+    #     belief /= torch.sum(belief, -1, keepdim=True)
+    #     source_input = (belief[:,:,1].reshape(1, 1, self.h, self.w) > 0.5).float()
+    #     self.M_from_grid = self.source.message(source_input)
+    #     # Permute this output
+    #     self.M_from_grid = self.M_from_grid.squeeze(0).permute(1, 2, 0)
+    #     # Reshape to send to code
+    #     self.M_to_code = self.M_from_grid.reshape(-1, 2)
+
     def decode_step(self):
 
-        # Perform one step of code graph belief propagation
-        self.code(self.ps, self.x, self.M_to_code)
-        self.M_from_code = self.code.M_out
-        # Reshape to send to grid
-        self.M_to_grid = self.M_from_code.reshape(self.h, self.w, 2)
+        # Pass the image hrough the source model to get probs
+        probs = self.source.model_0(torch.tanh(self.train_in), None)
+        # Multiply the probs with the doping probability
+        self.probs = F.softmax(probs.squeeze(2) * self.npot.permute(2, 0, 1).unsqueeze(0), dim=1)
 
-        # Perform one step of source graph belief propagation
-        # Extract the last channel of the code message
-        belief = self.M_to_grid * self.npot
-        belief /= torch.sum(belief, -1, keepdim=True)
-        source_input = (belief[:,:,1].reshape(1, 1, self.h, self.w) > 0.5).float()
-        self.M_from_grid = self.source.message(source_input)
-        # Permute this output
-        self.M_from_grid = self.M_from_grid.squeeze(0).permute(1, 2, 0)
-        # Reshape to send to code
-        self.M_to_code = self.M_from_grid.reshape(-1, 2)
+        # Compute the entropy of the distribution
+        self.entropy_loss = torch.mean(-probs * torch.log(probs + 1e-10))
+
+        # Pass the probs to the code graph for decoding
+        self.code(self.ps, self.x, probs.squeeze(0).permute(1, 2, 0).reshape(-1, 2))
+        self.similarity_loss = self.MSEloss(self.probs, self.code.M_out)
+
+        # Perform a step of optimization
+        self.optimizer.zero_grad()
+        loss = self.similarity_loss + 0.2 * self.entropy_loss
+        loss.backward()
+        self.optimizer.step
+
+    # def decode(self, num_iter=1):
+
+    #     # Set the initial beliefs to all nans
+    #     B_old = torch.tensor(float('nan') * np.ones((self.h, self.w))).to(device)
+    #     start = time.time()
+
+    #     # Perform multiple iterations of belief propagation
+    #     for i in range(num_iter):
+
+    #         # Perform a step of message passing/decoding
+    #         self.decode_step()
+
+    #         # Calculate the belief
+    #         if self.M_from_grid is None:
+    #             self.B = self.M_to_grid * self.npot
+    #         else:
+    #             self.B = self.M_from_grid * self.M_to_grid * self.npot
+    #         self.B /= torch.sum(self.B, -1).unsqueeze(-1)
+
+    #         # Termination condition to end belief propagation
+    #         if torch.sum(torch.abs(self.B[..., 1] - B_old)).item() < 0.5:
+    #             break
+    #         B_old = self.B[..., 1]
+
+    #         # Compute the number of errors and print some information
+    #         errs = torch.sum(torch.abs((self.B[..., 1] > 0.5).float() - self.samp.reshape(self.h, self.w))).item()
+    #         print(f'Iteration {i}: {errs} errors')
+        
+    #     end = time.time()
+    #     print(f'Total time taken for decoding is {end - start}s')
 
     def decode(self, num_iter=1):
-
-        # Set the initial beliefs to all nans
-        B_old = torch.tensor(float('nan') * np.ones((self.h, self.w))).to(device)
-        start = time.time()
 
         # Perform multiple iterations of belief propagation
         for i in range(num_iter):
 
             # Perform a step of message passing/decoding
             self.decode_step()
-
-            # Calculate the belief
-            if self.M_from_grid is None:
-                self.B = self.M_to_grid * self.npot
-            else:
-                self.B = self.M_from_grid * self.M_to_grid * self.npot
-            self.B /= torch.sum(self.B, -1).unsqueeze(-1)
-
-            # Termination condition to end belief propagation
-            if torch.sum(torch.abs(self.B[..., 1] - B_old)).item() < 0.5:
-                break
-            B_old = self.B[..., 1]
-
-            # Compute the number of errors and print some information
-            errs = torch.sum(torch.abs((self.B[..., 1] > 0.5).float() - self.samp.reshape(self.h, self.w))).item()
-            print(f'Iteration {i}: {errs} errors')
-        
-        end = time.time()
-        print(f'Total time taken for decoding is {end - start}s')
 
 def test_source_code_bp():
 
@@ -400,7 +436,7 @@ def test_source_code_bp():
     ax[0].set_title("Source Image")
     ax[1].imshow((source_code_bp.npot.cpu()[..., 1] > 0.5).float().numpy())
     ax[1].set_title("Doping samples")
-    ax[2].imshow((source_code_bp.B.cpu()[..., 1] > 0.5).float().numpy())
+    ax[2].imshow((torch.tanh(source_code_bp.train_in).cpu()[..., 1] > 0.0).float().numpy())
     ax[2].set_title("Reconstructed Image")
     plt.tight_layout()
     plt.show()
