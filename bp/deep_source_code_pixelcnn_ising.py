@@ -22,11 +22,11 @@ from pixel_models.pixelcnn import *
 parser = argparse.ArgumentParser(description='Belief propagation training arguments')
 parser.add_argument('--h', type=int, default=28, help="Height of the images")
 parser.add_argument('--w', type=int, default=28, help="Width of the images")
-parser.add_argument('--n_bits', type=int, default=2, help="Number of itensity levels in PixelCNN")
+parser.add_argument('--n_bits', type=int, default=1, help="Number of itensity levels in PixelCNN")
 parser.add_argument('--ldpc_mat', type=str, default='H_28.mat', help="Path to LDPC matrix")
 parser.add_argument('--device', type=str, default='cuda:0', help="Device to run the code on")
-parser.add_argument('--restore_file_0', type=str, default='/fs/data/tejasj/Masters_Thesis/pixel_models/results/pixelcnn/2021-04-13_05-24-01/checkpoint.pt', help="Directory with checkpoint for orig orientation model")
-parser.add_argument('--restore_file_180', type=str, default='/fs/data/tejasj/Masters_Thesis/pixel_models/results/pixelcnn/2021-04-13_17-08-22/checkpoint.pt', help="Directory with checkpoint for rotated orientation model")
+parser.add_argument('--restore_file_0', type=str, default='/fs/data/tejasj/Masters_Thesis/pixel_models/results/pixelcnn/2021-04-15_05-19-01/checkpoint.pt', help="Directory with checkpoint for orig orientation model")
+parser.add_argument('--restore_file_180', type=str, default='/fs/data/tejasj/Masters_Thesis/pixel_models/results/pixelcnn/2021-04-15_16-11-09/checkpoint.pt', help="Directory with checkpoint for rotated orientation model")
 parser.add_argument('--arch', type=str, default='pixelcnn', help="Type of architecture")
 parser.add_argument('--num_iter', type=int, default=100, help="Number of bp iterations")
 parser.add_argument('--data_path', default='datasets/ising_28_05_09_75000', help='Location of datasets.')
@@ -93,7 +93,7 @@ class Source():
                  n_channels=128,
                  n_res_layers=5,
                  n_logistic_mix=10,
-                 n_bits=2,
+                 n_bits=1,
                  n_out_conv_channels=1024,
                  kernel_size=5,
                  norm_layer=True,
@@ -140,11 +140,8 @@ class Source():
 
         # The input logits is of shape (B, 2**n_bits, C, H, W), convert to probs
         out = F.softmax(l.squeeze(2), 1)
-        prob_0, prob_1 = out.split(2, dim=1)
-        prob_0 = torch.sum(prob_0, 1, keepdim=True) # Output shape (B, 1, H, W)
-        prob_1 = torch.sum(prob_1, 1, keepdim=True)
 
-        return torch.cat([prob_0, prob_1], dim=1)
+        return out
 
     def discretized_mix_logistic_loss(self, l, x):
         """ log likelihood for mixture of discretized logistics
@@ -306,7 +303,6 @@ class SourceCodeBP():
         test = self.samp.reshape(1, 1, self.h, self.w)
         test_t = self.source.transform(test)
         prob = F.softmax(self.source.model_0(test_t, None).squeeze(2))
-        print(test[0, :, :4, :4])
         print(test_t[0, :, :4, :4])
         print(prob[0, :, :4, :4])
         exit(0)
