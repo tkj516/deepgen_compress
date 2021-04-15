@@ -348,12 +348,13 @@ class SourceCodeBP():
         # Pass the image hrough the source model to get probs
         probs = self.source.model_0(torch.tanh(self.train_in), None)
         # Multiply the probs with the doping probability
-        self.probs = F.softmax(probs.squeeze(2) * self.npot.permute(2, 0, 1).unsqueeze(0), dim=1)
+        self.probs = F.softmax(probs.squeeze(2), dim=1) * self.npot.permute(2, 0, 1).unsqueeze(0)
+        self.probs /= torch.sum(self.probs, 1, keepdim=True)
 
         # Compute the entropy of the distribution
-        print(probs.squeeze(2))
-        print(self.probs)
-        print(torch.log(self.probs + 1e-10))
+        # print(probs.squeeze(2))
+        # print(self.probs)
+        # print(torch.log(self.probs + 1e-10))
         self.entropy_loss = torch.mean(-self.probs * torch.log(self.probs + 1e-10))
 
         # Pass the probs to the code graph for decoding
