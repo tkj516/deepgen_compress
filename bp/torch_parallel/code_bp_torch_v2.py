@@ -62,8 +62,8 @@ class CodeBP(nn.Module):
     def reset(self):
 
         self.Hsx.data *= 0
-        self.Hxs *= 0
-        self.M_out *= 0
+        self.Hxs.data *= 0
+        self.M_out.data *= 0
 
     def forward(self, ps, x, Min):
         """
