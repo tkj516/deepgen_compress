@@ -218,7 +218,6 @@ class Source():
 
             # Set the inputs -- original and rotated orientation
             x_t = self.transform(x)
-            print(x_t)
             x_t_rot = x_t.rot90(2, [2, 3])
             # Get the logits and convert to probabilities
             out_0 = self.convert_logits_to_prob(self.model_0(x_t, None))
@@ -303,6 +302,10 @@ class SourceCodeBP():
         idx = np.random.randint(0, len(self.dataset))
         self.samp, _ = self.dataset[idx]
         self.samp = torch.FloatTensor(self.samp.reshape(-1, 1)).to(device)
+
+        test = self.samp.reshape(1, 1, self.h, self.w)
+        prob = F.softmax(self.source.model_0(self.source.transform(test), None).squeeze(2))
+        print(prob)
 
     def encode(self):
 
