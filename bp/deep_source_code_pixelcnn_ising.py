@@ -304,7 +304,9 @@ class SourceCodeBP():
         self.samp = torch.FloatTensor(self.samp.reshape(-1, 1)).to(device)
 
         test = self.samp.reshape(1, 1, self.h, self.w)
-        prob = F.softmax(self.source.model_0(self.source.transform(test), None).squeeze(2))
+        test_t = self.source.transform(test)
+        prob = F.softmax(self.source.model_0(test_t, None).squeeze(2))
+        print(test_t[0, :, :4, :4])
         print(prob[0, :, :4, :4])
         exit(0)
 
