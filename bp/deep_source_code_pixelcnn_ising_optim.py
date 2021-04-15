@@ -284,7 +284,7 @@ class SourceCodeBP():
         self.B = None
 
         # Trainable input sample
-        self.train_in = torch.zeros(1, 1, self.h, self.w)
+        self.train_in = torch.zeros(1, 1, self.h, self.w).to(device)
         self.train_in.requires_grad = True
 
         # Define the optimizer
@@ -436,7 +436,7 @@ def test_source_code_bp():
     ax[0].set_title("Source Image")
     ax[1].imshow((source_code_bp.npot.cpu()[..., 1] > 0.5).float().numpy())
     ax[1].set_title("Doping samples")
-    ax[2].imshow((torch.tanh(source_code_bp.train_in).cpu()[..., 1] > 0.0).float().numpy())
+    ax[2].imshow((torch.tanh(source_code_bp.train_in).cpu().reshape(28, 28) > 0.0).float().numpy())
     ax[2].set_title("Reconstructed Image")
     plt.tight_layout()
     plt.show()
