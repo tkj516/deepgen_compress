@@ -324,8 +324,6 @@ class SourceCodeBP():
         # Reshape to send to grid
         self.M_to_grid = self.M_from_code.reshape(self.h, self.w, 2)
 
-        return
-
         # Perform one step of source graph belief propagation
         # Extract the last channel of the code message
         belief = self.M_to_grid * self.npot
