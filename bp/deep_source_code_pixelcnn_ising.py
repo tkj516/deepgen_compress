@@ -338,7 +338,7 @@ class SourceCodeBP():
         # Extract the last channel of the code message
         belief = self.M_to_grid * self.npot
         belief /= torch.sum(belief, -1, keepdim=True)
-        source_input = (belief[:,:,1].reshape(1, 1, self.h, self.w) > 0.5).float()
+        source_input = belief[:,:,1].reshape(1, 1, self.h, self.w).float() # > 0.5
         self.M_from_grid = self.source.message(source_input)
 
         # Use the mask
@@ -368,7 +368,6 @@ class SourceCodeBP():
                 self.B = self.M_from_grid * self.M_to_grid * self.npot
             self.B /= torch.sum(self.B, -1).unsqueeze(-1)
 
-            print(self.M_to_grid)
             fig, ax = plt.subplots(3, 2)
             ax[0, 0].imshow(self.samp.cpu().numpy().reshape(28, 28), vmin=0, vmax=1)
             ax[0, 0].set_title("Source Image")
