@@ -357,7 +357,7 @@ class SourceCodeBP():
                 self.B = self.M_from_grid * self.M_to_grid * self.npot
             self.B /= torch.sum(self.B, -1).unsqueeze(-1)
 
-            print(M_to_grid)
+            print(self.M_to_grid)
             fig, ax = plt.subplots(3, 2)
             ax[0, 0].imshow(self.samp.cpu().numpy().reshape(28, 28))
             ax[0, 0].set_title("Source Image")
