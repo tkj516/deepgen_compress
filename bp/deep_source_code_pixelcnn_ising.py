@@ -298,6 +298,7 @@ class SourceCodeBP():
 
         self.mask = np.zeros((self.N, ))
         self.mask[indices] = 1
+        self.mask = self.mask.reshape(self.h, self.w)
 
         self.kernel = np.array([[0, 0, 0], [0, 1, 1], [0, 1, 1]])
 
