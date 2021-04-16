@@ -354,15 +354,17 @@ class SourceCodeBP():
                 self.B = self.M_from_grid * self.M_to_grid * self.npot
             self.B /= torch.sum(self.B, -1).unsqueeze(-1)
 
-            print(self.M_to_grid)
-            print(self.M_from_grid)
-            fig, ax = plt.subplots(3, 1)
+            fig, ax = plt.subplots(5, 1)
             ax[0].imshow(self.samp.cpu().numpy().reshape(28, 28))
             ax[0].set_title("Source Image")
             ax[1].imshow((self.npot.cpu()[..., 1] > 0.5).float().numpy())
             ax[1].set_title("Doping samples")
             ax[2].imshow((self.B.cpu()[..., 1] > 0.5).float().numpy())
             ax[2].set_title("Reconstructed Image")
+            ax[3].imshow((self.M_from_grid.cpu()[..., 1] > 0.5).float().numpy())
+            ax[3].set_title("M from grid")
+            ax[4].imshow((self.M_to_grid.cpu()[..., 1] > 0.5).float().numpy())
+            ax[4].set_title("M to grid")
             plt.tight_layout()
             plt.show()
 
