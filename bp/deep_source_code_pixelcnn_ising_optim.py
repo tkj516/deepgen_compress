@@ -363,7 +363,7 @@ class SourceCodeBP():
 
         # Perform a step of optimization
         self.optimizer.zero_grad()
-        loss = self.similarity_loss + 0.2 * self.entropy_loss
+        loss = 100*self.similarity_loss + self.entropy_loss
         loss.backward()
         self.optimizer.step()
 
