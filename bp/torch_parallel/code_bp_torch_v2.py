@@ -61,9 +61,9 @@ class CodeBP(nn.Module):
 
     def reset(self):
 
-        self.Hsx.data *= 0
-        self.Hxs.data *= 0
-        self.M_out.data *= 0
+        self.Hsx = nn.Parameter(torch.zeros(self.K, self.N))
+        self.Hxs = nn.Parameter(torch.zeros(self.K, self.N))
+        self.M_out = nn.Parameter(torch.zeros(self.N, 2))
 
     def forward(self, ps, x, Min):
         """
