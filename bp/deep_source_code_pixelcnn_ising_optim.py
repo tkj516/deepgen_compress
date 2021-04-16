@@ -116,10 +116,10 @@ class Source():
             # Restore the checkpoints and set to evaluation mode
             model_checkpoint = torch.load(args.restore_file_0, map_location=device)
             self.model_0.load_state_dict(model_checkpoint['state_dict'])
-            self.model_0.eval()
+            # self.model_0.eval()
             model_checkpoint = torch.load(args.restore_file_180, map_location=device)
             self.model_180.load_state_dict(model_checkpoint['state_dict'])
-            self.model_180.eval()           
+            # self.model_180.eval()           
         else:
             pass
 
