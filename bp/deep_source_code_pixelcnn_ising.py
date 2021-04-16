@@ -329,7 +329,9 @@ class SourceCodeBP():
     def decode_step(self):
 
         # Perform one step of code graph belief propagation
-        self.code(self.ps, self.x, self.M_to_code)
+        self.code.reset()
+        for _ in range(20):
+            self.code(self.ps, self.x, self.M_to_code)
         self.M_from_code = self.code.M_out
         # Reshape to send to grid
         self.M_to_grid = self.M_from_code.reshape(self.h, self.w, 2)
