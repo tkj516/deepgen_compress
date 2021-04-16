@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
 from tqdm import tqdm
@@ -12,6 +13,8 @@ from torchvision.datasets import MNIST, CIFAR10
 from functools import partial
 import matplotlib.pyplot as plt
 import os
+
+mpl.rc('image', cmap='gray')
 
 from torch_parallel.code_bp_torch_v2 import CodeBP
 from torch_parallel.grid_bp_torch import GridBP
