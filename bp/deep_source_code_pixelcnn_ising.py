@@ -215,12 +215,12 @@ class Source():
 
             # Set the inputs -- original and rotated orientation
             x_t = self.transform(x)
-            x_t_rot = x_t.rot90(2, [2, 3])
+            # x_t_rot = x_t.rot90(2, [2, 3])
             # Get the logits and convert to probabilities
             out_0 = self.convert_logits_to_prob(self.model_0(x_t, None))
-            out_180 = self.convert_logits_to_prob(self.model_180(x_t_rot, None).rot90(2, [-2, -1]))
+            # out_180 = self.convert_logits_to_prob(self.model_180(x_t_rot, None).rot90(2, [-2, -1]))
             # Multiply probabilities and normalize
-            message = out_0 * out_180
+            message = out_0# * out_180
             message /= torch.sum(message, 1, keepdim=True)
 
         else:
