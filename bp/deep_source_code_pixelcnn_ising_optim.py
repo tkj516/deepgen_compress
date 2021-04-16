@@ -289,7 +289,7 @@ class SourceCodeBP():
 
         # Define the optimizer
         self.MSEloss = torch.nn.MSELoss()
-        self.optimizer = torch.optim.Adam(params=[self.train_in], lr=1e-4, betas=(0.9, 0.999))
+        self.optimizer = torch.optim.Adam(params=[self.train_in], lr=1e-3, betas=(0.9, 0.999))
 
     def doping(self):
 
