@@ -13,6 +13,7 @@ from torchvision.datasets import MNIST, CIFAR10
 from functools import partial
 import matplotlib.pyplot as plt
 import os
+from scipy import signal
 
 mpl.rc('image', cmap='gray')
 
@@ -295,6 +296,11 @@ class SourceCodeBP():
         # Update the node potential after doping
         self.npot = self.ps.reshape(self.h, self.w, 2)
 
+        self.mask = np.zeros((self.N, ))
+        self.mask[indices] = 1
+
+        self.kernel = np.array([[0, 0, 0], [0, 1, 1], [0, 1, 1]])
+
     def preprocess(self, x):
         # 1. convert data to float
         # 2. normalize to [0,1] given quantization
@@ -333,8 +339,12 @@ class SourceCodeBP():
         belief /= torch.sum(belief, -1, keepdim=True)
         source_input = (belief[:,:,1].reshape(1, 1, self.h, self.w) > 0.5).float()
         self.M_from_grid = self.source.message(source_input)
+
+        # Use the mask
+        self.mask = signal.convolve2d(self.mask, self.kernel, mode='same')
         # Permute this output
         self.M_from_grid = self.M_from_grid.squeeze(0).permute(1, 2, 0)
+        self.M_from_grid = torch.masked_fill(self.M_from_grid, torch.tensor(self.mask).to(device) < 1, 0.5)
         # Reshape to send to code
         self.M_to_code = self.M_from_grid.reshape(-1, 2)
 
