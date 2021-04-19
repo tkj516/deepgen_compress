@@ -6,7 +6,7 @@ class IsingGenerator(nn.Module):
 
     def __init__(self,
                  encoding_shape=7**2,
-                 output_dim=128,
+                 output_dim=28,
                  output_nc=1):
 
         super(IsingGenerator, self).__init__()
