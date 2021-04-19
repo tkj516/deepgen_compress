@@ -65,7 +65,7 @@ class Pix2PixModel(BaseModel):
             # Setup the schedulers
             self.schedulers = [networks.get_scheduler(optimizer, opt) for optimizer in self.optimizers]
 
-    def set_input(self, input, encoding):
+    def set_input(self, input):
         """Unpack input data from the dataloader and perform necessary pre-processing steps.
 
         Parameters:
