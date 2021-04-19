@@ -55,7 +55,7 @@ class Pix2PixModel(BaseModel):
         if self.isTrain:
             # define loss functions
             self.criterionGAN = networks.GANLoss(opt.gan_mode).to(self.device)
-            self.criterionCE = torch.nn.CrossEntropyLoss()
+            self.criterionBCE = torch.nn.BCEWithLogitsLoss()
             self.criterionL1 = torch.nn.L1Loss()
             # initialize optimizers; schedulers will be automatically created by function <BaseModel.setup>.
             self.optimizer_G = torch.optim.Adam(self.netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
@@ -64,9 +64,6 @@ class Pix2PixModel(BaseModel):
             self.optimizers.append(self.optimizer_D)
             # Setup the schedulers
             self.schedulers = [networks.get_scheduler(optimizer, opt) for optimizer in self.optimizers]
-
-        # Load the LDPC matrix
-        self.ldpc_mat = torch.FloatTensor(loadmat('/fs/data/tejasj/mrf/ldpc.mat')['H']).to(self.device)
 
     def set_input(self, input, encoding):
         """Unpack input data from the dataloader and perform necessary pre-processing steps.
@@ -78,28 +75,23 @@ class Pix2PixModel(BaseModel):
         """
         
         # Input Gibb's sampled image
-        b, c, h, w = input['sample'].shape
         self.real_B = input['sample'].to(self.device)
-        # Get the encoding obtained after multiplying with LDPC matrix
-        self.real_A = encoding.to(self.device)
+        self.b, self.c, self.h, self.w = self.real_B.shape
 
     def forward(self):
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
         
         # Get the fake logits segmentation mask
-        self.fake_B = self.netG(self.real_A)  # G(A)
-        # Obtain an (approx binary) image from this
-        self.fake_B_img = F.softmax(self.fake_B, dim=1)
-        self.fake_B_img = 10000*(self.fake_B_img[:, 1, ...] - self.fake_B_img[:, 0, ...]).unsqueeze(1)
-        self.fake_B_img = torch.sigmoid(self.fake_B_img)
+        input = torch.randn(self.b, self.c*self.h//4*self.w//4).to(self.device)
+        self.fake_B = self.netG(input)  # G(A)
 
     def backward_D(self):
         """Calculate GAN loss for the discriminator"""
         # Fake; stop backprop to the generator by detaching fake_B_img -- use the approx binary image here
-        pred_fake = self.netD(self.fake_B_img.detach(), self.real_A.detach())
+        pred_fake = self.netD(self.fake_B.detach())
         self.loss_D_fake = self.criterionGAN(pred_fake, False)
         # Real
-        pred_real = self.netD(self.real_B, self.real_A)
+        pred_real = self.netD(self.real_B)
         self.loss_D_real = self.criterionGAN(pred_real, True)
         # combine loss and calculate gradients
         self.loss_D = (self.loss_D_fake + self.loss_D_real) * 0.5
@@ -108,17 +100,12 @@ class Pix2PixModel(BaseModel):
     def backward_G(self):
         """Calculate GAN and L1 loss for the generator"""
         # First, G(A) should fake the discriminator
-        pred_fake = self.netD(self.fake_B_img, self.real_A)
+        pred_fake = self.netD(self.fake_B)
         self.loss_G_GAN = self.criterionGAN(pred_fake, True)
         # Second, G(A) = B -- use the segmentation map here
-        self.loss_G_CE = self.criterionCE(self.fake_B, self.real_B.squeeze(1).detach().long().to(self.fake_B_img.device)) * self.opt.lambda_L1
-        # Third: Apply the difference loss between compressed images -- use the approx binary image here
-        b, c, w, h = self.fake_B_img.shape
-        pred_projection = torch.sin(torch.matmul(self.ldpc_mat, self.fake_B_img.reshape(b, w*h, 1)) * np.pi / 2.0)
-        true_projection = torch.sin(torch.matmul(self.ldpc_mat, self.real_B.reshape(b, w*h, 1)) * np.pi / 2.0)
-        self.loss_G_diff = self.criterionL1(pred_projection, true_projection) * self.opt.lambda_diff
+        self.loss_G_BCE = self.criterionBCE(self.fake_B, self.real_B.detach().long().to(self.fake_B_img.device)) * self.opt.lambda_L1
         # combine loss and calculate gradients
-        self.loss_G = self.loss_G_GAN + self.loss_G_CE + self.loss_G_diff
+        self.loss_G = self.loss_G_GAN + self.loss_G_BCE
         self.loss_G.backward()
 
     def optimize_parameters(self):
