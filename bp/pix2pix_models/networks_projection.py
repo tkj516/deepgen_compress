@@ -4,7 +4,7 @@ from torch.nn import init
 import functools
 from torch.optim import lr_scheduler
 
-from isinggan_arch import *
+from .isinggan_arch import *
 from basicsr.models.archs.discriminator_arch import VGGStyleDiscriminator128
 
 ###############################################################################
