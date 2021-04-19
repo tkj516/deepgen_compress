@@ -340,8 +340,9 @@ class SourceCodeBP():
         probs = self.source.model_0(torch.tanh(self.train_in), None)
         # Multiply the probs with the doping probability
         self.probs = self.source.discretized_mix_logistic_loss(probs, torch.tanh(self.train_in))
-        self.probs = torch.where(torch.tanh(self.train_in) > 0, self.probs, 1-self.probs)
-        print(self.probs.shape)
+        probs_0 = torch.where(torch.tanh(self.train_in) <= 0, self.probs, 1-self.probs)
+        probs_1 = torch.where(torch.tanh(self.train_in) > 0, self.probs, 1-self.probs)
+        self.probs = torch.cat([probs_0, probs_1], 1)
 
         # Compute the nll
         self.entropy_loss = discretized_mix_logistic_loss(probs, torch.tanh(self.train_in), self.n_bits)
