@@ -82,7 +82,7 @@ class Pix2PixModel(BaseModel):
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
         
         # Get the fake logits segmentation mask
-        input = torch.randn(self.b, self.c*self.h//4*self.w//4).to(self.device)
+        input = torch.rand(self.b, self.c*self.h//4*self.w//4).to(self.device)
         self.fake_B = self.netG(input)  # G(A)
 
     def backward_D(self):
