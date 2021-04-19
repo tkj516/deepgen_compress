@@ -104,8 +104,11 @@ class Source():
 
         # Load the model
         if self.arch == 'pixelcnnpp':
-            self.model = PixelCNNpp(image_dims, n_channels, n_res_layers, n_logistic_mix,
-                                        n_cond_classes).to(device)
+            self.model_0 = MyDataParallel(PixelCNNpp(image_dims, n_channels, n_res_layers, n_logistic_mix,
+                                        n_cond_classes)).to(device)
+            # Restore the checkpoints and set to evaluation mode
+            model_checkpoint = torch.load(args.restore_file_0, map_location=device)
+            self.model_0.load_state_dict(model_checkpoint['state_dict'])           
         elif self.arch == 'pixelcnn':
             n_res_layers = 12
             self.model_0 = MyDataParallel(PixelCNN(image_dims, n_bits, n_channels, n_out_conv_channels, kernel_size,
@@ -200,16 +203,9 @@ class Source():
         # TODO: Fix this after training rotated model
         if self.arch == 'pixelcnnpp':
             x_t = self.transform(x)
-            # First dimension contains true probs and second contains probs of inverted values
-            out = self.model(torch.cat([x_t, -1*x_t], 0), None)
-            self.ll = self.discretized_mix_logistic_loss(out, torch.cat([x_t, -1*x_t], 0))
-            self.prob = torch.exp(self.ll)
-
-            b, h, w = self.ll.shape
-            message = torch.zeros(1, 2, h, w).to(device)
-            message[:,0,:,:] = torch.where(x==0, self.prob[0, ...], self.prob[1, ...])
-            message[:,1,:,:] = torch.where(x==1, self.prob[0, ...], self.prob[1, ...])
-            message /= torch.sum(message, 1, keepdim=True)
+            # Get the logits and convert to probabilites
+            out_0 = self.model(x_t, None)
+            message = self.discretized_mix_logistic_loss(out_0, x)
 
         elif self.arch == 'pixelcnn':
 
@@ -316,26 +312,7 @@ class SourceCodeBP():
 
         self.x = (self.H @ self.samp) % 2
 
-    # def decode_step(self):
-
-    #     # Perform one step of code graph belief propagation
-    #     self.code(self.ps, self.x, self.M_to_code)
-    #     self.M_from_code = self.code.M_out
-    #     # Reshape to send to grid
-    #     self.M_to_grid = self.M_from_code.reshape(self.h, self.w, 2)
-
-    #     # Perform one step of source graph belief propagation
-    #     # Extract the last channel of the code message
-    #     belief = self.M_to_grid * self.npot
-    #     belief /= torch.sum(belief, -1, keepdim=True)
-    #     source_input = (belief[:,:,1].reshape(1, 1, self.h, self.w) > 0.5).float()
-    #     self.M_from_grid = self.source.message(source_input)
-    #     # Permute this output
-    #     self.M_from_grid = self.M_from_grid.squeeze(0).permute(1, 2, 0)
-    #     # Reshape to send to code
-    #     self.M_to_code = self.M_from_grid.reshape(-1, 2)
-
-    def decode_step(self):
+    def decode_step_pixelcnn(self):
 
         # Pass the image hrough the source model to get probs
         probs = self.source.model_0(torch.tanh(self.train_in), None)
@@ -357,36 +334,28 @@ class SourceCodeBP():
 
         print(f'Entropy Loss: {self.entropy_loss.item()}, Similarity Loss: {self.similarity_loss.item()}')
 
-    # def decode(self, num_iter=1):
+    def decode_step_pixelcnnpp(self):
 
-    #     # Set the initial beliefs to all nans
-    #     B_old = torch.tensor(float('nan') * np.ones((self.h, self.w))).to(device)
-    #     start = time.time()
+        # Pass the image hrough the source model to get probs
+        probs = self.source.model_0(torch.tanh(self.train_in), None)
+        # Multiply the probs with the doping probability
+        self.probs = self.source.discretized_mix_logistic_loss(probs, torch.tanh(self.train_in))
 
-    #     # Perform multiple iterations of belief propagation
-    #     for i in range(num_iter):
+        # Compute the nll
+        self.entropy_loss = discretized_mix_logistic_loss(probs, torch.tanh(self.train_in), self.n_bits)
+        self.entropy_loss = torch.abs(self.entropy_loss - 0.065)
 
-    #         # Perform a step of message passing/decoding
-    #         self.decode_step()
+        # Pass the probs to the code graph for decoding
+        self.code(self.ps, self.x, self.probs.squeeze(0).permute(1, 2, 0).reshape(-1, 2))
+        self.similarity_loss = self.MSEloss(self.probs, self.code.M_out.permute(1, 0).reshape(1, 2, 28, 28))
 
-    #         # Calculate the belief
-    #         if self.M_from_grid is None:
-    #             self.B = self.M_to_grid * self.npot
-    #         else:
-    #             self.B = self.M_from_grid * self.M_to_grid * self.npot
-    #         self.B /= torch.sum(self.B, -1).unsqueeze(-1)
+        # Perform a step of optimization
+        self.optimizer.zero_grad()
+        loss = self.similarity_loss + 100*self.entropy_loss
+        loss.backward()
+        self.optimizer.step()
 
-    #         # Termination condition to end belief propagation
-    #         if torch.sum(torch.abs(self.B[..., 1] - B_old)).item() < 0.5:
-    #             break
-    #         B_old = self.B[..., 1]
-
-    #         # Compute the number of errors and print some information
-    #         errs = torch.sum(torch.abs((self.B[..., 1] > 0.5).float() - self.samp.reshape(self.h, self.w))).item()
-    #         print(f'Iteration {i}: {errs} errors')
-        
-    #     end = time.time()
-    #     print(f'Total time taken for decoding is {end - start}s')
+        print(f'Entropy Loss: {self.entropy_loss.item()}, Similarity Loss: {self.similarity_loss.item()}')
 
     def decode(self, num_iter=1):
 
@@ -394,7 +363,10 @@ class SourceCodeBP():
         for i in range(num_iter):
 
             # Perform a step of message passing/decoding
-            self.decode_step()
+            if self.source.arch == 'pixelcnn':
+                self.decode_step_pixelcnn()
+            else:
+                self.decode_step_pixelcnnpp()
 
 def test_source_code_bp():
 
