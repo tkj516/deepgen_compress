@@ -3,13 +3,7 @@ import torch.nn as nn
 from torch.nn import init
 import functools
 from torch.optim import lr_scheduler
-from random_projection.models.archs.rrdbnet_arch import RRDBNet
-from random_projection.models.archs.ffgan_arch import *
 from bp.archs.isinggan_arch import *
-from mvq_tests.archs.vqsrgan_arch import VQSRGAN
-from mvq_tests.archs.mvqsrgan_arch import MVQSRGAN
-from mvq_tests.archs.convmvqsrgan_arch import ConvMVQSRGAN
-from mvq_tests.archs.patchmvqsrgan_arch import PatchMVQSRGAN
 from basicsr.models.archs.discriminator_arch import VGGStyleDiscriminator128
 
 ###############################################################################
@@ -164,55 +158,8 @@ def define_G(input_nc=1,
     net = None
     norm_layer = get_norm_layer(norm_type=norm)
 
-    if netG == 'ffgan':
-        net = Generator()
-    elif netG == 'isinggan':
+    if netG == 'isinggan':
         net = IsingGenerator()
-    elif netG == 'rrdbnet':
-        net = RRDBNet(num_in_ch=input_nc,
-                      num_out_ch=output_nc)
-    elif netG == 'vqsrgan':
-        net = VQSRGAN(num_in_ch=input_nc,
-                    num_out_ch=output_nc,
-                    num_feat=64,
-                    num_block=16,
-                    block_size=4,
-                    num_embeddings=2, 
-                    embedding_dim=16, 
-                    commitment_cost=0.25, 
-                    decay=0.99)
-    elif netG == 'mvqsrgan':
-        net = MVQSRGAN(num_in_ch=input_nc,
-                    num_out_ch=output_nc,
-                    num_feat=64,
-                    num_block=16,
-                    block_size=4,
-                    num_embeddings=2, 
-                    embedding_dim=16, 
-                    commitment_cost=0.25, 
-                    decay=0.99)
-    elif netG == 'convmvqsrgan':
-        net = ConvMVQSRGAN(num_in_ch=input_nc,
-                        num_out_ch=output_nc,
-                        num_feat=64,
-                        num_block=16,
-                        block_size=4,
-                        num_embeddings=2, 
-                        embedding_dim=16, 
-                        commitment_cost=0.25, 
-                        decay=0.99,
-                        kernel_sizes=kernel_sizes,
-                        num_kernels=num_kernels)
-    elif netG == 'patchmvqsrgan':
-        net = PatchMVQSRGAN(num_in_ch=input_nc,
-                        num_out_ch=output_nc,
-                        num_feat=64,
-                        num_block=16,
-                        block_size=4,
-                        num_embeddings=2, 
-                        embedding_dim=16, 
-                        commitment_cost=0.25, 
-                        decay=0.99)
     elif netG == 'resnet_9blocks':
         net = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=9)
     elif netG == 'resnet_6blocks':
@@ -269,9 +216,7 @@ def define_D(input_nc=1,
     net = None
     norm_layer = get_norm_layer(norm_type=norm)
 
-    if netD == 'ffgan':
-        net = Discriminator()
-    elif netD == 'isinggan':
+    if netD == 'isinggan':
         net = IsingDiscriminator()
     elif netD == 'relativistic':
         net = VGGStyleDiscriminator128(num_in_ch=input_nc, num_feat=ndf)
