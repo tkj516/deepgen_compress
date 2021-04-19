@@ -21,13 +21,13 @@ class IsingGenerator(nn.Module):
                                       nn.LeakyReLU())
 
         # Outputs a segmentation mask
-        self.body = nn.Sequential(nn.ConvTranspose2d(1, 128, 5, stride=1, padding=2),
-                                  nn.BatchNorm2d(128),
-                                  nn.LeakyReLU(),
-                                  nn.ConvTranspose2d(128, 64, 5, stride=2, padding=2, output_padding=1),
+        self.body = nn.Sequential(nn.ConvTranspose2d(1, 64, 5, stride=1, padding=2),
                                   nn.BatchNorm2d(64),
                                   nn.LeakyReLU(),
-                                  nn.ConvTranspose2d(64, 1, 5, stride=2, padding=2, output_padding=1),
+                                  nn.ConvTranspose2d(64, 32, 5, stride=2, padding=2, output_padding=1),
+                                  nn.BatchNorm2d(32),
+                                  nn.LeakyReLU(),
+                                  nn.ConvTranspose2d(32, 1, 5, stride=2, padding=2, output_padding=1),
                                   )
 
     def forward(self, encoding):
@@ -52,9 +52,6 @@ class IsingDiscriminator(nn.Module):
                                     nn.LeakyReLU(),
                                     nn.Dropout2d(0.3),
                                     nn.Conv2d(16, 32, 5, stride=2, padding=2),
-                                    nn.LeakyReLU(),
-                                    nn.Dropout(0.3),
-                                    nn.Conv2d(32, 32, 3, stride=1, padding=1),
                                     nn.LeakyReLU(),
                                     nn.Flatten(),
                                     nn.Linear(7*7*32, 1024),
