@@ -84,6 +84,7 @@ class Pix2PixModel(BaseModel):
         # Get the fake logits segmentation mask
         input = torch.randn(self.b, self.c*self.h//4*self.w//4).to(self.device)
         self.fake_B = self.netG(input)  # G(A)
+        print(self.fake_B.shape)
 
     def backward_D(self):
         """Calculate GAN loss for the discriminator"""
