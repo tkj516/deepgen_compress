@@ -3,8 +3,8 @@ import torch.nn as nn
 from torch.nn import init
 import functools
 from torch.optim import lr_scheduler
-from bp import archs
-from bp.archs.isinggan_arch import *
+
+from archs import isinggan_arch
 from basicsr.models.archs.discriminator_arch import VGGStyleDiscriminator128
 
 ###############################################################################
