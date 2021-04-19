@@ -5,7 +5,7 @@ import functools
 from torch.optim import lr_scheduler
 from random_projection.models.archs.rrdbnet_arch import RRDBNet
 from random_projection.models.archs.ffgan_arch import *
-from random_projection.models.archs.isinggan_arch import *
+from bp.archs.isinggan_arch import *
 from mvq_tests.archs.vqsrgan_arch import VQSRGAN
 from mvq_tests.archs.mvqsrgan_arch import MVQSRGAN
 from mvq_tests.archs.convmvqsrgan_arch import ConvMVQSRGAN
