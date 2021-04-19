@@ -202,7 +202,7 @@ def main():
                 j = 0
                 
                 visuals['original ' + str(i*batch_size + j)] = sample['sample'][j, ...].reshape(1, h, w)
-                visuals['output_recon_image ' + str(i*batch_size + j)] = detached_out[j, ...].reshape(1, h, w)
+                visuals['output_recon_image ' + str(i*batch_size + j)] = torch.sigmoid(detached_out)[j, ...].reshape(1, h, w)
 
                 writer.add_image(f'{epoch}/{i}/original', visuals['original ' + str(i*batch_size + j)], i)
                 writer.add_image(f'{epoch}/{i}/output_recon_image', visuals['output_recon_image ' + str(i*batch_size + j)], i)

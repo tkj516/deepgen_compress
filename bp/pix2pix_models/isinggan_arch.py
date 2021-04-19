@@ -54,7 +54,7 @@ class IsingDiscriminator(nn.Module):
                                     nn.Conv2d(16, 32, 5, stride=2, padding=2),
                                     nn.LeakyReLU(),
                                     nn.Dropout(0.3),
-                                    nn.Conv2d(32, 32, 3, stride=2, padding=1),
+                                    nn.Conv2d(32, 32, 3, stride=1, padding=1),
                                     nn.LeakyReLU(),
                                     nn.Flatten(),
                                     nn.Linear(7*7*32, 1024),
