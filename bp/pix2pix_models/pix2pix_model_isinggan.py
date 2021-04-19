@@ -103,7 +103,7 @@ class Pix2PixModel(BaseModel):
         pred_fake = self.netD(self.fake_B)
         self.loss_G_GAN = self.criterionGAN(pred_fake, True)
         # Second, G(A) = B -- use the segmentation map here
-        self.loss_G_BCE = self.criterionBCE(self.fake_B, self.real_B.detach().long().to(self.fake_B.device)) * self.opt.lambda_L1
+        self.loss_G_BCE = self.criterionBCE(self.fake_B, self.real_B.detach().to(self.fake_B.device)) * self.opt.lambda_L1
         # combine loss and calculate gradients
         self.loss_G = self.loss_G_GAN + self.loss_G_BCE
         self.loss_G.backward()
