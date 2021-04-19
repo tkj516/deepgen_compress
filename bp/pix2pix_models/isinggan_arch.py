@@ -5,7 +5,7 @@ import torch.nn as nn
 class IsingGenerator(nn.Module):
 
     def __init__(self,
-                 encoding_shape=7**2,
+                 encoding_shape=7*7*256,
                  output_dim=28,
                  output_nc=1):
 
@@ -16,18 +16,18 @@ class IsingGenerator(nn.Module):
         self.output_nc = output_nc
         
         # Massage the encoding into noise that the Generator can use
-        self.massager = nn.Sequential(nn.Linear(encoding_shape, encoding_shape),
+        self.massager = nn.Sequential(nn.Linear(100, encoding_shape),
                                       nn.BatchNorm1d(encoding_shape),
                                       nn.LeakyReLU())
 
         # Outputs a segmentation mask
-        self.body = nn.Sequential(nn.ConvTranspose2d(1, 64, 5, stride=1, padding=2),
+        self.body = nn.Sequential(nn.ConvTranspose2d(256, 128, 5, stride=1, padding=2),
+                                  nn.BatchNorm2d(128),
+                                  nn.LeakyReLU(),
+                                  nn.ConvTranspose2d(128, 64, 5, stride=2, padding=2, output_padding=1),
                                   nn.BatchNorm2d(64),
                                   nn.LeakyReLU(),
-                                  nn.ConvTranspose2d(64, 32, 5, stride=2, padding=2, output_padding=1),
-                                  nn.BatchNorm2d(32),
-                                  nn.LeakyReLU(),
-                                  nn.ConvTranspose2d(32, 1, 5, stride=2, padding=2, output_padding=1),
+                                  nn.ConvTranspose2d(64, 1, 5, stride=2, padding=2, output_padding=1),
                                   )
 
     def forward(self, encoding):
@@ -35,7 +35,7 @@ class IsingGenerator(nn.Module):
         out = self.massager(encoding)
         
         b, _ = out.shape
-        out = out.reshape(b, self.output_nc, self.output_dim//4, self.output_dim//4)
+        out = out.reshape(b, -1, self.output_dim//4, self.output_dim//4)
 
         # Output is like a two channel segmentation mask before softmax
         out = self.body(out)
