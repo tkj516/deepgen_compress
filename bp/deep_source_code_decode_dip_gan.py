@@ -66,7 +66,7 @@ class Decoder(nn.Module):
         self.c, self.h, self.w = image_dims
 
         # Define a parameter for the input image
-        self.input = torch.rand(1, 100).to(device)
+        self.input = torch.randn(1, 100).to(device)
 
         self.massager = nn.Sequential(nn.Linear(100, 512),
                                       nn.Tanh(),
@@ -84,10 +84,14 @@ class Decoder(nn.Module):
         self.L1loss = nn.L1Loss()
         self.cosine_similarity = nn.CosineSimilarity(dim=0)
 
+        # Define normal distribution
+        self.normal = torch.distributions.Normal(torch.tensor([0.0]), torch.tensor([1.0]))
+
     def forward(self):
 
         # Normalize the input in the correct range for the source model
-        self.normalized_input = self.source(self.massager(self.input))
+        self.massaged_input = self.massager(self.input)
+        self.normalized_input = self.source(self.massaged_input)
 
     def smooth_modulus(self, x, y=2, epsilon=1e-4):
 
@@ -106,11 +110,14 @@ class Decoder(nn.Module):
         encodings = self.H @ ((thresholded_input + 1) / 2).reshape(-1, 1)
         encodings = self.smooth_modulus(encodings)
 
+        # Enforce that massaged input is normal
+        nll = -1*torch.sum(self.normal.log_prob(self.massaged_input))
+
         # Apply similarity loss
         # similarity_loss = -1*self.cosine_similarity(encodings, targets)
         similarity_loss = self.L1loss(encodings, targets)
 
-        return similarity_loss
+        return similarity_loss + nll
 
 def test_source_code_decode():
 
