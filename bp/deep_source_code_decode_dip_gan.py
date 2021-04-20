@@ -117,7 +117,7 @@ class Decoder(nn.Module):
         # similarity_loss = -1*self.cosine_similarity(encodings, targets)
         similarity_loss = self.L1loss(encodings, targets)
 
-        return similarity_loss + 0.1*nll
+        return similarity_loss + 0.05*nll
 
 def test_source_code_decode():
 
