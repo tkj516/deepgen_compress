@@ -28,6 +28,7 @@ class IsingGenerator(nn.Module):
                                   nn.BatchNorm2d(64),
                                   nn.LeakyReLU(),
                                   nn.ConvTranspose2d(64, 1, 5, stride=2, padding=2, output_padding=1),
+                                  nn.Tanh()
                                   )
 
     def forward(self, encoding):
@@ -38,7 +39,7 @@ class IsingGenerator(nn.Module):
         out = out.reshape(b, -1, self.output_dim//4, self.output_dim//4)
 
         # Output is like a two channel segmentation mask before softmax
-        out = self.body(out)
+        out = (self.body(out) + 1) / 2
 
         return out
 
