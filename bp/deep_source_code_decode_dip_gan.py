@@ -71,7 +71,7 @@ class Decoder(nn.Module):
         self.massager = nn.Sequential(nn.Linear(100, 512),
                                       nn.Tanh(),
                                       nn.Linear(512, 100))
-        self.massager.train()
+        self.massager.eval()
 
         # Define the pixelcnn architecture that is being used
         self.arch = arch
