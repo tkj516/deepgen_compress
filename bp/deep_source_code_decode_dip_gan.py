@@ -85,7 +85,7 @@ class Decoder(nn.Module):
         self.cosine_similarity = nn.CosineSimilarity(dim=0)
 
         # Define normal distribution
-        self.normal = torch.distributions.Normal(torch.tensor([0.0]), torch.tensor([1.0]))
+        self.normal = torch.distributions.Normal(torch.tensor([0.0]).to(device), torch.tensor([1.0]).to(device))
 
     def forward(self):
 
