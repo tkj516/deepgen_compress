@@ -96,7 +96,7 @@ class Decoder(nn.Module):
     def smooth_modulus(self, x, y=2, epsilon=1e-4):
 
         theta = x.mul(np.pi).div(y)
-        return 1 - y/np.pi * torch.atan((torch.cos(theta)*torch.sin(theta)) / (torch.sin(theta)**2 + epsilon**2))
+        return 1 - (y * torch.atan((torch.cos(theta)*torch.sin(theta)) / (torch.sin(theta)**2 + epsilon**2))) / np.pi
 
     def calculate_loss(self, targets):
 
@@ -117,7 +117,7 @@ class Decoder(nn.Module):
         # similarity_loss = -1*self.cosine_similarity(encodings, targets)
         similarity_loss = self.L1loss(encodings, targets)
 
-        return similarity_loss + 0.05*nll
+        return similarity_loss + 0.03*nll
 
 def test_source_code_decode():
 
