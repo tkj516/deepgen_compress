@@ -71,13 +71,13 @@ class Decoder(nn.Module):
         self.massager = nn.Sequential(nn.Linear(100, 512),
                                       nn.Tanh(),
                                       nn.Linear(512, 100))
-        self.massager.eval()
+        self.massager.train()
 
         # Define the pixelcnn architecture that is being used
         self.arch = arch
 
         self.source = torch.hub.load("Lornatang/GAN-PyTorch", "mnist", pretrained=True, progress=True, verbose=False)
-        self.source.train()
+        self.source.eval()
         self.source = self.source.to(device)
 
         # Define a few loss functions
