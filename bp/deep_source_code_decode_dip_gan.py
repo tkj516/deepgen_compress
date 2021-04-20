@@ -76,22 +76,6 @@ class Decoder(nn.Module):
         # Define the pixelcnn architecture that is being used
         self.arch = arch
 
-        # Load the model
-        # if self.arch == 'pixelcnnpp':
-        #     self.source = PixelCNNpp(image_dims, n_channels, n_res_layers, n_logistic_mix,
-        #                                 n_cond_classes).to(device)
-        # elif self.arch == 'pixelcnn':
-        #     n_res_layers = 12
-        #     self.source = MyDataParallel(PixelCNN(image_dims, n_bits, n_channels, n_out_conv_channels, kernel_size,
-        #                                 n_res_layers, n_cond_classes, norm_layer)).to(device)
-        # else:
-        #     pass
-
-        # # Restore the checkpoint and set to evaluation mode
-        # source_checkpoint = torch.load(args.restore_file, map_location=device)
-        # self.source.load_state_dict(source_checkpoint['state_dict'])
-        # self.source.eval()
-
         self.source = torch.hub.load("Lornatang/GAN-PyTorch", "mnist", pretrained=True, progress=True, verbose=False)
         self.source.eval()
         self.source = self.source.to(device)
@@ -105,6 +89,11 @@ class Decoder(nn.Module):
         # Normalize the input in the correct range for the source model
         self.normalized_input = self.source(self.massager(self.input))
 
+    def smooth_modulus(self, x, y=2, epsilon=1e-4):
+
+        theta = x.mul(np.pi).div(y)
+        return 1 - y/np.pi * torch.atan((torch.cos(theta)*torch.sin(theta)) / (torch.sin(theta)**2 + epsilon**2))
+
     def calculate_loss(self, targets):
 
         # Threshold the input
@@ -115,7 +104,7 @@ class Decoder(nn.Module):
 
         # Get the encoding loss using the LDPC matrix
         encodings = self.H @ ((thresholded_input + 1) / 2).reshape(-1, 1)
-        encodings = (torch.cos(np.pi*encodings) + 1) / 2
+        encodings = self.smooth_modulus(encodings)
 
         # Apply similarity loss
         # similarity_loss = -1*self.cosine_similarity(encodings, targets)
