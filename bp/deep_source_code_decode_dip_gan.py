@@ -117,7 +117,7 @@ class Decoder(nn.Module):
         # similarity_loss = -1*self.cosine_similarity(encodings, targets)
         similarity_loss = self.L1loss(encodings, targets)
 
-        return similarity_loss + nll
+        return similarity_loss + 0.01*nll
 
 def test_source_code_decode():
 
@@ -132,7 +132,7 @@ def test_source_code_decode():
     decoder = Decoder(H).to(device)
 
     # Setup an optimizer for the input image
-    optimizer = torch.optim.Adam(params=decoder.massager.parameters(), lr=5e-4, betas=(0.9, 0.999))
+    optimizer = torch.optim.Adam(params=decoder.massager.parameters(), lr=1e-3, betas=(0.9, 0.999))
 
     # Either load a sample image or generate one using Gibb's sampling
     print("[Generating the sample ...]")
