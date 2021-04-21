@@ -121,7 +121,7 @@ class Decoder(nn.Module):
         # Apply similarity loss
         # similarity_loss = -1*self.cosine_similarity(encodings, targets)
         # similarity_loss = self.MSEloss(encodings, targets.detach())
-        similarity_loss = self.softmarginloss(encoding, 2*targets.detach() - 1)
+        similarity_loss = self.softmarginloss(encodings, 2*targets.detach() - 1)
 
         # doping_loss = self.MSEloss(input.reshape(-1, 1)[doped_indices, 0], doped_values)
         doping_loss = self.softmarginloss(input.reshape(-1, 1)[doped_indices, 0], 2*doped_values - 1)
