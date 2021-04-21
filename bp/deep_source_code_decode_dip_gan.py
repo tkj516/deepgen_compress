@@ -89,7 +89,7 @@ class Decoder(nn.Module):
         self.normal = torch.distributions.Normal(torch.tensor([0.0]).to(device), torch.tensor([1.0]).to(device))
 
         # Define lagrange multipliers
-        self.multipliers = torch.ones(1, self.H.shape[0]).to(device)
+        # self.multipliers = torch.ones(1, self.H.shape[0]).to(device)
 
     def forward(self):
 
@@ -102,16 +102,16 @@ class Decoder(nn.Module):
         theta = x.mul(np.pi).div(y)
         return 1 - (y * torch.atan((torch.cos(theta)*torch.sin(theta)) / (torch.sin(theta)**2 + epsilon**2))) / np.pi
 
-    def calculate_loss(self, targets):
+    def calculate_loss(self, targets, doped_values, doped_indices):
 
         # Threshold the input
-        thresholded_input = self.normalized_input
+        input = (self.normalized_input + 1) / 2
 
         # Get the loss from the pixelcnn
         # logistic_loss = discretized_mix_logistic_loss(self.logits, thresholded_input, self.n_bits)
 
         # Get the encoding loss using the LDPC matrix
-        encodings = self.H @ ((thresholded_input + 1) / 2).reshape(-1, 1)
+        encodings = self.H @ input.reshape(-1, 1)
         encodings = self.smooth_modulus(encodings)
 
         # Enforce that massaged input is normal
@@ -119,11 +119,13 @@ class Decoder(nn.Module):
 
         # Apply similarity loss
         # similarity_loss = -1*self.cosine_similarity(encodings, targets)
-        # similarity_loss = self.MSEloss(encodings, targets.detach())
+        similarity_loss = self.MSEloss(encodings, targets.detach())
 
-        similarity_loss = torch.clamp(self.multipliers, min = 0) @ (encodings - targets.detach())
+        doping_loss = self.MSEloss(input.reshape(-1, 1)[doped_indices, 0], doped_values)
 
-        return similarity_loss + 0.03*nll
+        # similarity_loss = torch.clamp(self.multipliers, min = 0) @ (encodings - targets.detach())
+
+        return similarity_loss + 0.03*nll + doping_loss
 
 def test_source_code_decode():
 
@@ -138,7 +140,7 @@ def test_source_code_decode():
     decoder = Decoder(H).to(device)
 
     # Setup an optimizer for the input image
-    optimizer = torch.optim.Adam(params=list(decoder.massager.parameters()) + [decoder.multipliers], lr=1e-4, betas=(0.9, 0.999))
+    optimizer = torch.optim.Adam(params=list(decoder.massager.parameters()), lr=1e-4, betas=(0.9, 0.999))
 
     # Either load a sample image or generate one using Gibb's sampling
     print("[Generating the sample ...]")
@@ -158,13 +160,18 @@ def test_source_code_decode():
     print("[Encoding the sample ...]")
     targets = (H @ samp) % 2
 
+    # Perform doping
+    doped_indices = np.random.randint(h*w, size=int(h*w*0.04)+1)
+    # Dope the very first sample also
+    doped_values = samp[doped_indices, 0]
+
     # Decode the code using belief propagation
     print("[Decoding ...]")
     for i in range(args.num_iter):
         decoder()
 
         optimizer.zero_grad()
-        s_loss = decoder.calculate_loss(targets)
+        s_loss = decoder.calculate_loss(targets, doped_values, doped_indices)
         loss = s_loss
         loss.backward()
         optimizer.step()
