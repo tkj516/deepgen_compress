@@ -121,6 +121,7 @@ class Decoder(nn.Module):
         # similarity_loss = -1*self.cosine_similarity(encodings, targets)
         similarity_loss = self.MSEloss(encodings, targets.detach())
 
+        print(input.reshape(-1, 1)[doped_indices, 0])
         doping_loss = self.MSEloss(input.reshape(-1, 1)[doped_indices, 0], doped_values)
 
         # similarity_loss = torch.clamp(self.multipliers, min = 0) @ (encodings - targets.detach())
