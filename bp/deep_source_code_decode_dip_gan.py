@@ -126,7 +126,7 @@ class Decoder(nn.Module):
 
         # similarity_loss = torch.clamp(self.multipliers, min = 0) @ (encodings - targets.detach())
 
-        return 100*similarity_loss + nll + 50*doping_loss
+        return 100*similarity_loss + 20*nll + 50*doping_loss
 
 def test_source_code_decode():
 
