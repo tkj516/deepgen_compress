@@ -88,6 +88,9 @@ class Decoder(nn.Module):
         # Define normal distribution
         self.normal = torch.distributions.Normal(torch.tensor([0.0]).to(device), torch.tensor([1.0]).to(device))
 
+        # Define lagrange multipliers
+        self.multipliers = torch.ones(1, self.H.shape[0]).to(device)
+
     def forward(self):
 
         # Normalize the input in the correct range for the source model
@@ -116,7 +119,9 @@ class Decoder(nn.Module):
 
         # Apply similarity loss
         # similarity_loss = -1*self.cosine_similarity(encodings, targets)
-        similarity_loss = self.MSEloss(encodings, targets.detach())
+        # similarity_loss = self.MSEloss(encodings, targets.detach())
+
+        similarity_loss = torch.clamp(self.multipliers, min = 0) @ (encodings - targets.detach())
 
         return similarity_loss + 0.03*nll
 
@@ -133,7 +138,7 @@ def test_source_code_decode():
     decoder = Decoder(H).to(device)
 
     # Setup an optimizer for the input image
-    optimizer = torch.optim.Adam(params=decoder.massager.parameters(), lr=5e-4, betas=(0.9, 0.999))
+    optimizer = torch.optim.Adam(params=list(decoder.massager.parameters()) + [decoder.multipliers], lr=1e-4, betas=(0.9, 0.999))
 
     # Either load a sample image or generate one using Gibb's sampling
     print("[Generating the sample ...]")
