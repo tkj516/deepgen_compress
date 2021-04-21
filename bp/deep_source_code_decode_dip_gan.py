@@ -83,7 +83,7 @@ class Decoder(nn.Module):
         # Define a few loss functions
         self.L1loss = nn.L1Loss()
         self.cosine_similarity = nn.CosineSimilarity(dim=0)
-        self.MSELoss = nn.MSELoss()
+        self.MSEloss = nn.MSELoss()
 
         # Define normal distribution
         self.normal = torch.distributions.Normal(torch.tensor([0.0]).to(device), torch.tensor([1.0]).to(device))
