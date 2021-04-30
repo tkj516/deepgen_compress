@@ -175,6 +175,7 @@ class CodeBP(nn.Module):
         M_out_diff = torch.tanh(torch.sum(self.Hxs.data[factor_neighbors, grid], -1, keepdim=True))
         nan_check = torch.logical_and(torch.isnan(M_out_diff), torch.isinf(self.Hxs[factor_neighbors, grid]))
         nan_check_idx = torch.nonzero(torch.sum(nan_check.float(), -1, keepdim=True))
+        print(nan_check_idx)
         # Resolve nans by calculating meaningful messages
         if nan_check_idx.shape[0] > 0:
             print("here")
