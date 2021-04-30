@@ -1,21 +1,23 @@
 import sys
 sys.path.append('..')
 
-import torch
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.io import loadmat
-from tqdm import tqdm
+import os
 import time
 import argparse
+import numpy as np
+from tqdm import tqdm
+from scipy.io import loadmat
 from datetime import datetime
-import torchvision
-import torchvision.transforms as T
-from torch.utils.data import Dataset, DataLoader
-from torchvision.datasets import MNIST, CIFAR10
 from functools import partial
 import matplotlib.pyplot as plt
-import os
+
+import torch
+import torchvision
+import torchvision.transforms as T
+import torch.nn.functional as F
+from torch.utils.data import Dataset, DataLoader
+from torchvision.datasets import MNIST, CIFAR10
+
 
 from torch_parallel.code_bp_torch_v2 import CodeBP
 from torch_parallel.grid_bp_torch import GridBP
