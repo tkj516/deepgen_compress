@@ -26,7 +26,6 @@ from spnflow.torch.transforms import Reshape
 parser = argparse.ArgumentParser(description='Belief propagation training arguments')
 parser.add_argument('--ldpc_mat', type=str, default='H_28.mat', help="Path to LDPC matrix")
 parser.add_argument('--device', type=str, default='cuda:0', help="Device to run the code on")
-parser.add_argument('--restore_file', type=str, default='.', help="Directory with checkpoint")
 parser.add_argument('--num_iter', type=int, default=100, help="Number of bp iterations")
 # DGC-SPN arguments
 parser.add_argument('--dequantize', action='store_true', help='Whether to use dequantization.')
@@ -107,7 +106,7 @@ class Source():
                     ).to(device)
 
         # Restore the checkpoint and set to evaluation mode
-        model_checkpoint = torch.load(args.restore_file)
+        model_checkpoint = torch.load(args.checkpoint)
         self.model.load_state_dict(model_checkpoint['model_state_dict'])
         self.model.eval()
 
