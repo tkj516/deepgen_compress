@@ -130,9 +130,7 @@ class Source():
     def message(self, x):
 
         # Expect non log beliefs and convert them to log beliefs
-        external_log_probs = torch.log(x) - torch.logsumexp(x, dim=1, keepdim=True)
-        print(x)
-        print(external_log_probs)
+        external_log_probs = torch.log(x) - torch.logsumexp(torch.log(x), dim=1, keepdim=True)
 
         # Get probabilities of 0 at each pixel - do this in batches
         log_prob_0 = []
