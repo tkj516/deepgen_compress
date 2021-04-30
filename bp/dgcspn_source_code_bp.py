@@ -162,7 +162,7 @@ class SourceCodeBP():
                  p=0.5, 
                  stay=0.9,
                  alpha=0.8,
-                 doperate=0.04
+                 doperate=0.00
                  ):
 
         # Store the parameters
