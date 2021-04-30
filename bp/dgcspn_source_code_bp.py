@@ -139,7 +139,10 @@ class Source():
         log_prob_0 = torch.cat(log_prob_0, dim=0)
 
         # Get probabilities of 1 at each pixel
-        log_prob_1 = self.model(self.one_input, external_beliefs=external_log_probs).reshape(-1, 1)
+        log_prob_1 = []
+        for i in range(56):
+            log_prob_1.append(self.model(self.one_input[14:i:14*(i+1)], external_beliefs=external_log_probs).reshape(-1, 1))
+        log_prob_1 = torch.cat(log_prob_1, dim=0)
         
         # Normalize output probabilities using logsumexp
         message = torch.cat([log_prob_0, log_prob_1], dim=-1)
