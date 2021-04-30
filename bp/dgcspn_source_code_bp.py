@@ -131,7 +131,6 @@ class Source():
 
         # Expect non log beliefs and convert them to log beliefs
         external_log_probs = torch.log(x) - torch.logsumexp(torch.log(x), dim=1, keepdim=True)
-        print(external_log_probs)
 
         # Get probabilities of 0 at each pixel - do this in batches
         log_prob_0 = []
@@ -142,7 +141,7 @@ class Source():
         # Get probabilities of 1 at each pixel
         log_prob_1 = []
         for i in range(56):
-            log_prob_1.append(self.model(self.one_input[14*i:14*(i+1)], external_beliefs=external_log_probs).reshape(-1, 1))
+            log_prob_1.append(self.model(self.one_input[14*i:14*(i+1), ...], external_beliefs=external_log_probs).reshape(-1, 1))
         log_prob_1 = torch.cat(log_prob_1, dim=0)
         
         # Normalize output probabilities using logsumexp
