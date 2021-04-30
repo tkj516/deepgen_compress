@@ -180,6 +180,7 @@ class CodeBP(nn.Module):
         if nan_check_idx.shape[0] > 0:
             M_out_diff[nan_check_idx[:,0], 0] = \
                 torch.tanh(torch.sum(self.Hxs.data[factor_neighbors, grid].masked_fill(nan_check, 0), -1, keepdim=True))[nan_check_idx[:,0],0]
+        print(M_out_diff)
         # Convert likelihoods back to probability
         self.M_out.data = 0.5 + torch.cat([M_out_diff, -M_out_diff], -1)/2
 
