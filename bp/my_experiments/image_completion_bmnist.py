@@ -139,7 +139,7 @@ if __name__ == '__main__':
 
     # Create the writer
     timestamp = time.strftime("%Y-%m-%d_%H:%M:%S")
-    writer = SummaryWriter('dgcspn/tensorboard/image_completion/' + timestamp)
+    writer = SummaryWriter('../bp_results/dgcspn/tensorboard/image_completion/' + timestamp)
 
     # Write the args to tensorboard
     writer.add_text('config', str(args.__dict__))
@@ -187,7 +187,7 @@ if __name__ == '__main__':
         # Get the estimated completion using MPE
         sample, _ = model.mpe(x)
 
-        image_grid = torchvision.utils.make_grid(torch.cat([orig, x.cpu(), sample.cpu()], dim=0))
+        image_grid = torchvision.utils.make_grid(torch.cat([orig, torch.isnan(x.cpu(), torch.tensor(0.5), x.cpu()), sample.cpu()], dim=0))
         writer.add_image(f'test/{count}_{omittion_order[0]}', image_grid, count)
 
         # Increment count and perform circular rotation on omittion order
