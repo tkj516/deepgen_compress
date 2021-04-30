@@ -185,7 +185,7 @@ class SourceCodeBP():
                                                         ])
 
         # Setup the MNIST dataset
-        self.dataset = MNIST('../../MNIST', train=True, transform=self.transform)
+        self.dataset = MNIST('../../MNIST', train=False, transform=self.transform)
         print("[Setup the sampler ...]")
 
         # Setup the source graph
@@ -223,7 +223,7 @@ class SourceCodeBP():
         self.samp, _ = self.dataset[idx]
         self.samp = torch.FloatTensor(self.samp.reshape(-1, 1)).to(device)
 
-        self.samp = (torch.rand(28, 28) > 0.5).float().reshape(-1, 1).to(device)
+        # self.samp = (torch.rand(28, 28) > 0.5).float().reshape(-1, 1).to(device)
 
     def encode(self):
 
