@@ -131,7 +131,6 @@ class Source():
 
         # Expect non log beliefs and convert them to log beliefs
         external_log_probs = torch.log(x) - torch.logsumexp(torch.log(x), dim=1, keepdim=True)
-        print(external_log_probs)
 
         # Get probabilities of 0 at each pixel - do this in batches
         log_prob_0 = []
@@ -150,7 +149,6 @@ class Source():
 
         # If nan then this was doped pixel
         message = torch.where(torch.isnan(message), torch.tensor(float('-inf')).to(device), message)
-        print(message[:60, ...])
         message -= torch.logsumexp(message, dim=-1, keepdim=True)
        
         return torch.exp(message)
@@ -241,7 +239,6 @@ class SourceCodeBP():
         # Perform one step of source graph belief propagation
         external_prob = (self.M_to_grid*self.npot).unsqueeze(0).permute(0, 3, 1, 2) # b, 2, h, w
         self.M_to_code = self.source.message(external_prob)
-        print(self.M_to_code[:60, ...])
         # Reshape this output
         self.M_from_grid = self.M_to_code.reshape(self.h, self.w, 2)
 
