@@ -325,6 +325,7 @@ def test_source_code_bp(console_display=False, writer=None, experiment_number=0)
     video = source_code_bp.decode(num_iter=args.num_iter)
 
     # Log images to tensorboard
+    writer.add_image(f'{experiment_number}/original_image', source_code_bp.samp, global_step=experiment_number)
     writer.add_video(f'{experiment_number}/convergence_video', video, fps=2, global_step=experiment_number)
 
     if console_display:
