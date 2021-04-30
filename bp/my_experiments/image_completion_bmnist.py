@@ -189,7 +189,7 @@ if __name__ == '__main__':
 
         image_grid = torchvision.utils.make_grid(torch.cat([orig, 
                                                  torch.where(torch.isnan(x.cpu(), torch.tensor(0.5), x.cpu())), 
-                                                 sample.cpu()], dim=0)
+                                                 sample.cpu()], dim=0))
         writer.add_image(f'test/{count}_{omittion_order[0]}', image_grid, count)
 
         # Increment count and perform circular rotation on omittion order
