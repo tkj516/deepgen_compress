@@ -126,6 +126,7 @@ class Source():
         self.zero_input = torch.where(one_hot_input == 1, torch.tensor(0.0), torch.tensor(float('nan'))).to(device)
         self.one_input = torch.where(one_hot_input == 1, torch.tensor(1.0), torch.tensor(float('nan'))).to(device)
 
+    @torch.no_grad()
     def message(self, x):
 
         # Expect non log beliefs and convert them to log beliefs
@@ -133,10 +134,9 @@ class Source():
 
         # Get probabilities of 0 at each pixel - do this in batches
         log_prob_0 = []
-        with torch.no_grad():
-            for i in range(56):
-                log_prob_0.append(self.model(self.zero_input[14*i:14*(i+1), ...], external_beliefs=external_log_probs).reshape(-1, 1))
-            log_prob_0 = torch.cat(log_prob_0, dim=0)
+        for i in range(56):
+            log_prob_0.append(self.model(self.zero_input[14*i:14*(i+1), ...], external_beliefs=external_log_probs).reshape(-1, 1))
+        log_prob_0 = torch.cat(log_prob_0, dim=0)
 
         # Get probabilities of 1 at each pixel
         log_prob_1 = self.model(self.one_input, external_beliefs=external_log_probs).reshape(-1, 1)
@@ -221,6 +221,7 @@ class SourceCodeBP():
 
         self.x = (self.H @ self.samp) % 2
 
+    @torch.no_grad()
     def decode_step(self):
 
         # Perform one step of code graph belief propagation
@@ -235,6 +236,7 @@ class SourceCodeBP():
         # Reshape this output
         self.M_from_grid = self.M_from_grid.squeeze(0).reshape(self.h, self.w, 2)
 
+    @torch.no_grad()
     def decode(self, num_iter=1):
 
         # Set the initial beliefs to all nans
