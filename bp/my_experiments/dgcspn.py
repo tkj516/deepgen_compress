@@ -169,11 +169,10 @@ class DgcSpn(AbstractModel):
         x = self.base_layer(x)
 
         # If there are external probabilities per node add them here
-        # TODO: Think about normalization - divide by logsumexp
+        # TODO: Think about normalization - subtract the logsumexp
         if external_beliefs is not None:
             x += external_beliefs
-            x /= torch.logsumexp(x, dim=1, keepdim=True)
-            print(x)
+            x -= torch.logsumexp(x, dim=1, keepdim=True)
 
         # Forward through the inner layers
         for layer in self.layers:
@@ -201,7 +200,7 @@ class DgcSpn(AbstractModel):
         # TODO: Think about normalization
         if external_beliefs is not None:
             z += external_beliefs
-            z /= torch.logsumexp(z, dim=1, keepdim=True)
+            z -= torch.logsumexp(z, dim=1, keepdim=True)
 
         # Forward through the inner layers
         y = z
