@@ -54,7 +54,7 @@ parser.add_argument('--batch-size', type=int, default=128, help='The batch size.
 parser.add_argument('--epochs', type=int, default=1000, help='The number of epochs.')
 parser.add_argument('--patience', type=int, default=30, help='The epochs patience used for early stopping.')
 parser.add_argument('--weight-decay', type=float, default=0.0, help='L2 regularization factor.')
-parser.add_argument('--binary', action='store_true', default=False, help='Use binary model and binarize dataset')
+parser.add_argument('--binary', action='store_true', help='Use binary model and binarize dataset')
 parser.add_argument('--checkpoint', type=str, required=True, help='Path to checkpoint file')
 args = parser.parse_args()
 
@@ -100,6 +100,7 @@ class Source():
                         optimize_scale=args.optimize_scale,
                         in_dropout=args.in_dropout,
                         sum_dropout=args.sum_dropout,
+                        quantiles_loc=args.quantiles_loc,
                         uniform_loc=args.uniform_loc,
                         rand_state=np.random.RandomState(42),
                         leaf_distribution=leaf_distribution
