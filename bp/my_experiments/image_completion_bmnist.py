@@ -47,8 +47,8 @@ if __name__ == '__main__':
     parser.add_argument('--dequantize', action='store_true', help='Whether to use dequantization.')
     parser.add_argument('--logit', type=float, default=None, help='The logit value to use for vision datasets.')
     parser.add_argument('--discriminative', action='store_true', help='Whether to use discriminative settings.')
-    parser.add_argument('--n-batches', type=int, default=8, help='The number of input distribution layer batches.')
-    parser.add_argument('--sum-channels', type=int, default=8, help='The number of channels at sum layers.')
+    parser.add_argument('--n-batches', type=int, default=2, help='The number of input distribution layer batches.')
+    parser.add_argument('--sum-channels', type=int, default=32, help='The number of channels at sum layers.')
     parser.add_argument('--depthwise', action='store_true', help='Whether to use depthwise convolution layers.')
     parser.add_argument('--n-pooling', type=int, default=0, help='The number of initial pooling product layers.')
     parser.add_argument(
@@ -187,7 +187,9 @@ if __name__ == '__main__':
         # Get the estimated completion using MPE
         sample, _ = model.mpe(x)
 
-        image_grid = torchvision.utils.make_grid(torch.cat([orig, torch.isnan(x.cpu(), torch.tensor(0.5), x.cpu()), sample.cpu()], dim=0))
+        image_grid = torchvision.utils.make_grid(torch.cat([orig, 
+                                                 torch.where(torch.isnan(x.cpu(), torch.tensor(0.5), x.cpu())), 
+                                                 sample.cpu()], dim=0)
         writer.add_image(f'test/{count}_{omittion_order[0]}', image_grid, count)
 
         # Increment count and perform circular rotation on omittion order
