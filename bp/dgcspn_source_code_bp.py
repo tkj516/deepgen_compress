@@ -24,6 +24,7 @@ from torch_parallel.grid_bp_torch import GridBP
 from torch_parallel.grid_gibbs import GibbsSampler
 from my_experiments.dgcspn import DgcSpn
 from spnflow.torch.transforms import Reshape
+from spnflow.utils.data import compute_mean_quantiles
 
 parser = argparse.ArgumentParser(description='Belief propagation training arguments')
 parser.add_argument('--ldpc_mat', type=str, default='H_28.mat', help="Path to LDPC matrix")
@@ -122,8 +123,8 @@ class Source():
         # Store the input tensor for calculating 0 and 1 probabilities
         one_hot_input = torch.tensor(np.arange(784)).reshape(28, 28)
         one_hot_input = F.one_hot(one_hot_input, num_classes=784).permute(2, 0, 1).unsqueeze(1) # 784, 1, 28, 28
-        self.zero_input = torch.where(one_hot_input == 1, torch.tensor(0.0), torch.tensor(float('nan')))
-        self.one_input = torch.where(one_hot_input == 1, torch.tensor(1.0), torch.tensor(float('nan')))
+        self.zero_input = torch.where(one_hot_input == 1, torch.tensor(0.0), torch.tensor(float('nan'))).to(device)
+        self.one_input = torch.where(one_hot_input == 1, torch.tensor(1.0), torch.tensor(float('nan'))).to(device)
 
     def message(self, x):
 
