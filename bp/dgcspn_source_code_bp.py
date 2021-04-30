@@ -30,6 +30,7 @@ parser = argparse.ArgumentParser(description='Belief propagation training argume
 parser.add_argument('--ldpc_mat', type=str, default='H_28.mat', help="Path to LDPC matrix")
 parser.add_argument('--device', type=str, default='cuda:0', help="Device to run the code on")
 parser.add_argument('--num_iter', type=int, default=100, help="Number of bp iterations")
+parser.add_argument('--doperate', type=float, default=0.04, help="Dope rate")
 # DGC-SPN arguments
 parser.add_argument('--dequantize', action='store_true', help='Whether to use dequantization.')
 parser.add_argument('--logit', type=float, default=None, help='The logit value to use for vision datasets.')
@@ -162,7 +163,7 @@ class SourceCodeBP():
                  p=0.5, 
                  stay=0.9,
                  alpha=0.8,
-                 doperate=0.00
+                 doperate=0.04
                  ):
 
         # Store the parameters
@@ -212,6 +213,7 @@ class SourceCodeBP():
 
     def doping(self):
 
+        print(self.doperate)
         indices = np.random.randint(self.N, size=int(self.N*self.doperate)+1)
         self.ps[indices, 0], self.ps[indices, 1] = (self.samp[indices, 0] == 0).float(), (self.samp[indices, 0] == 1).float()
         # Update the node potential after doping
@@ -282,7 +284,7 @@ def test_source_code_bp():
     H = torch.FloatTensor(loadmat(args.ldpc_mat)['Hf']).to(device)
 
     # Intialize the source-code decoding graph
-    source_code_bp = SourceCodeBP(H, h=h, w=w)
+    source_code_bp = SourceCodeBP(H, h=h, w=w, doperate=args.doperate)
 
     # Either load a sample image or generate one using Gibb's sampling
     print("[Generating the sample ...]")
