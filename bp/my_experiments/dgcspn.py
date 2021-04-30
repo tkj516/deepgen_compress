@@ -7,7 +7,7 @@ import numpy as np
 from spnflow.torch.models.abstract import AbstractModel
 from spnflow.torch.layers.dgcspn import SpatialGaussianLayer, SpatialProductLayer, SpatialSumLayer, SpatialRootLayer
 from spnflow.torch.constraints import ScaleClipper
-from .spatial_distributions import SpatialIndicatorLayer
+from my_experiments.spatial_distributions import SpatialIndicatorLayer
 
 
 class DgcSpn(AbstractModel):
