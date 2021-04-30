@@ -86,6 +86,12 @@ class Source():
         leaf_distribution = 'gaussian'
         if args.binary:
             leaf_distribution = 'indicator'
+
+        # Compute mean quantiles, if specified
+        if args.quantiles_loc:
+            quantiles_loc = compute_mean_quantiles(data_train, args.n_batches)
+        else:
+            quantiles_loc = None
         
         # Load the model
         self.model = DgcSpn(
@@ -100,7 +106,7 @@ class Source():
                         optimize_scale=args.optimize_scale,
                         in_dropout=args.in_dropout,
                         sum_dropout=args.sum_dropout,
-                        quantiles_loc=args.quantiles_loc,
+                        quantiles_loc=quantiles_loc,
                         uniform_loc=args.uniform_loc,
                         rand_state=np.random.RandomState(42),
                         leaf_distribution=leaf_distribution
