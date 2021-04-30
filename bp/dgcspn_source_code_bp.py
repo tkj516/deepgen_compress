@@ -245,6 +245,15 @@ class SourceCodeBP():
         # Reshape to send to grid
         self.M_to_grid = self.M_from_code.reshape(self.h, self.w, 2)
 
+        # Calculate the belief for visualization purposes
+        if self.M_to_code is None:
+            self.B = self.M_to_grid * self.npot
+        else:
+            self.B = self.M_from_grid * self.M_to_grid * self.npot
+        self.B /= torch.sum(self.B, -1).unsqueeze(-1)
+        # Add frames to the video
+        self.video.append(self.B[..., 1:].permute(2, 0, 1).unsqueeze(0).unsqueeze(0))
+
         # Perform one step of source graph belief propagation
         external_prob = (self.M_to_grid*self.npot).unsqueeze(0).permute(0, 3, 1, 2) # b, 2, h, w
         self.M_to_code = self.source.message(external_prob)
@@ -259,7 +268,7 @@ class SourceCodeBP():
         start = time.time()
 
         # Let's create a nice video and log it
-        video = [self.npot[..., 1:].permute(2, 0, 1).unsqueeze(0).unsqueeze(0)]
+        self.video = [self.npot[..., 1:].permute(2, 0, 1).unsqueeze(0).unsqueeze(0)]
 
         # Perform multiple iterations of belief propagation
         for i in range(num_iter):
@@ -272,7 +281,7 @@ class SourceCodeBP():
             self.B /= torch.sum(self.B, -1).unsqueeze(-1)
 
             # Add frames to the video
-            video.append(self.B[..., 1:].permute(2, 0, 1).unsqueeze(0).unsqueeze(0))
+            self.video.append(self.B[..., 1:].permute(2, 0, 1).unsqueeze(0).unsqueeze(0))
 
             # Termination condition to end belief propagation
             if torch.sum(torch.abs(self.B[..., 1] - B_old)).item() < 0.5:
@@ -286,7 +295,7 @@ class SourceCodeBP():
         end = time.time()
         print(f'Total time taken for decoding is {end - start}s')
 
-        return torch.cat(video, dim=1)
+        return torch.cat(self.video, dim=1)
 
 def test_source_code_bp(console_display=False, writer=None, experiment_number=0):
 
@@ -316,7 +325,7 @@ def test_source_code_bp(console_display=False, writer=None, experiment_number=0)
     video = source_code_bp.decode(num_iter=args.num_iter)
 
     # Log images to tensorboard
-    writer.add_video(f'convergence_video/{experiment_number}', video, fps=2, global_step=experiment_number)
+    writer.add_video(f'{experiment_number}/convergence_video', video, fps=2, global_step=experiment_number)
 
     if console_display:
         # Visualize the decoded image
