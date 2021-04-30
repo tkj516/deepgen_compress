@@ -236,6 +236,7 @@ class SourceCodeBP():
         # Perform one step of source graph belief propagation
         external_prob = (self.M_to_grid*self.npot).unsqueeze(0).permute(0, 3, 1, 2)
         self.M_to_code = self.source.message(external_prob)
+        print(self.M_to_code)
         # Reshape this output
         self.M_from_grid = self.M_to_code.reshape(self.h, self.w, 2)
 
