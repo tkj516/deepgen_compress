@@ -73,10 +73,11 @@ class CodeBP(nn.Module):
         Mout: N x 2
         """
 
-        print(torch.sum(Min, dim=-1))
 
         if Min is None:
             Min = 0.5 * torch.ones(self.N, 2).to(self.device)
+
+        print(torch.sum(Min, dim=-1))
 
         # Calculate the log likelihood of the messages
         log_Min = 0.5 * (torch.log(Min[:, 0]) - torch.log(Min[:, 1]))
