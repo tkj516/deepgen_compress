@@ -173,7 +173,7 @@ class DgcSpn(AbstractModel):
         if external_beliefs is not None:
             x += external_beliefs
             x -= torch.logsumexp(x, dim=1, keepdim=True)
-            print(x)
+            # print(x)
 
         # Forward through the inner layers
         for layer in self.layers:
