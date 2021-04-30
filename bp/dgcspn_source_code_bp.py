@@ -6,6 +6,7 @@ import time
 import argparse
 import numpy as np
 from tqdm import tqdm
+import matplotlib as mpl
 from scipy.io import loadmat
 from datetime import datetime
 from functools import partial
@@ -25,6 +26,8 @@ from torch_parallel.grid_gibbs import GibbsSampler
 from my_experiments.dgcspn import DgcSpn
 from spnflow.torch.transforms import Reshape
 from spnflow.utils.data import compute_mean_quantiles
+
+mpl.rc('image', cmap='gray')
 
 parser = argparse.ArgumentParser(description='Belief propagation training arguments')
 parser.add_argument('--ldpc_mat', type=str, default='H_28.mat', help="Path to LDPC matrix")
@@ -303,11 +306,11 @@ def test_source_code_bp():
 
     # Visualize the decoded image
     fig, ax = plt.subplots(3, 1)
-    ax[0].imshow(source_code_bp.samp.cpu().numpy().reshape(28, 28))
+    ax[0].imshow(source_code_bp.samp.cpu().numpy().reshape(28, 28), vmin=0, vmax=1)
     ax[0].set_title("Source Image")
-    ax[1].imshow((source_code_bp.npot.cpu()[..., 1] > 0.5).float().numpy())
+    ax[1].imshow(source_code_bp.npot.cpu()[..., 1].numpy(), vmin=0, vmax=1)
     ax[1].set_title("Doping samples")
-    ax[2].imshow((source_code_bp.B.cpu()[..., 1] > 0.5).float().numpy())
+    ax[2].imshow((source_code_bp.B.cpu()[..., 1] > 0.5).float().numpy(), vmin=0, vmax=1)
     ax[2].set_title("Reconstructed Image")
     plt.tight_layout()
     plt.show()
