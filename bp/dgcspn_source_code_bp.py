@@ -259,7 +259,7 @@ class SourceCodeBP():
         start = time.time()
 
         # Let's create a nice video and log it
-        video = [self.npot[..., 1].permute(2, 0, 1).unsqueeze(0).unsqueeze(0)]
+        video = [self.npot[..., 1:].permute(2, 0, 1).unsqueeze(0).unsqueeze(0)]
 
         # Perform multiple iterations of belief propagation
         for i in range(num_iter):
@@ -272,7 +272,7 @@ class SourceCodeBP():
             self.B /= torch.sum(self.B, -1).unsqueeze(-1)
 
             # Add frames to the video
-            video.append(self.B[..., 1].permute(2, 0, 1).unsqueeze(0).unsqueeze(0))
+            video.append(self.B[..., 1:].permute(2, 0, 1).unsqueeze(0).unsqueeze(0))
 
             # Termination condition to end belief propagation
             if torch.sum(torch.abs(self.B[..., 1] - B_old)).item() < 0.5:
