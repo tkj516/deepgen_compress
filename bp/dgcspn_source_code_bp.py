@@ -147,6 +147,9 @@ class Source():
         
         # Normalize output probabilities using logsumexp
         message = torch.cat([log_prob_0, log_prob_1], dim=-1)
+
+        # If nan then this was doped pixel
+        message = torch.where(torch.isnan(message), torch.tensor(float('-inf')).to(device), message)
         print(message[:60, ...])
         message -= torch.logsumexp(message, dim=-1, keepdim=True)
        
@@ -238,10 +241,6 @@ class SourceCodeBP():
         # Perform one step of source graph belief propagation
         external_prob = (self.M_to_grid*self.npot).unsqueeze(0).permute(0, 3, 1, 2) # b, 2, h, w
         self.M_to_code = self.source.message(external_prob)
-        print(self.M_to_code)
-        # TODO: Multiply with doping probability to set certain values correctly - same as setting nans to 0
-        self.M_to_code = torch.where(torch.isnan(self.M_to_code), torch.tensor(0.0).to(device), self.M_to_code)
-        self.M_to_code /= torch.sum(self.M_to_code, dim=-1, keepdim=True)
         print(self.M_to_code[:60, ...])
         # Reshape this output
         self.M_from_grid = self.M_to_code.reshape(self.h, self.w, 2)
