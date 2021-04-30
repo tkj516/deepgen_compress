@@ -173,6 +173,7 @@ class CodeBP(nn.Module):
         grid = torch.LongTensor([[i]*self.max_factor_neighbors for i in range(self.N)]).to(self.device)
         # Sum up all the incoming messages at each node and apply tanh to get likelihood
         M_out_diff = torch.tanh(torch.sum(self.Hxs.data[factor_neighbors, grid], -1, keepdim=True))
+        print(torch.sum(torch.isinf(self.Hxs[factor_neighbors, grid]).float(), axis=-1))
         nan_check = torch.logical_and(torch.isnan(M_out_diff), torch.isinf(self.Hxs[factor_neighbors, grid]))
         nan_check_idx = torch.nonzero(torch.sum(nan_check.float(), -1, keepdim=True))
         print(nan_check_idx)
