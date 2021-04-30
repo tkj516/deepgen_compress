@@ -223,7 +223,7 @@ class SourceCodeBP():
         self.samp, _ = self.dataset[idx]
         self.samp = torch.FloatTensor(self.samp.reshape(-1, 1)).to(device)
 
-        self.samp = (torch.rand(1, 1, 28, 28) > 0.5).float().to(device)
+        self.samp = (torch.rand(28, 28) > 0.5).float().reshape(-1, 1).to(device)
 
     def encode(self):
 
