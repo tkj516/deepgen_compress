@@ -24,7 +24,7 @@ from my_experiments.dgcspn import DgcSpn
 from spnflow.torch.transforms import Reshape
 
 parser = argparse.ArgumentParser(description='Belief propagation training arguments')
-parser.add_argument('--ldpc_mat', type=str, default='../H_28.mat', help="Path to LDPC matrix")
+parser.add_argument('--ldpc_mat', type=str, default='H_28.mat', help="Path to LDPC matrix")
 parser.add_argument('--device', type=str, default='cuda:0', help="Device to run the code on")
 parser.add_argument('--restore_file', type=str, default='.', help="Directory with checkpoint")
 parser.add_argument('--num_iter', type=int, default=100, help="Number of bp iterations")
@@ -32,8 +32,8 @@ parser.add_argument('--num_iter', type=int, default=100, help="Number of bp iter
 parser.add_argument('--dequantize', action='store_true', help='Whether to use dequantization.')
 parser.add_argument('--logit', type=float, default=None, help='The logit value to use for vision datasets.')
 parser.add_argument('--discriminative', action='store_true', help='Whether to use discriminative settings.')
-parser.add_argument('--n-batches', type=int, default=8, help='The number of input distribution layer batches.')
-parser.add_argument('--sum-channels', type=int, default=8, help='The number of channels at sum layers.')
+parser.add_argument('--n-batches', type=int, default=2, help='The number of input distribution layer batches.')
+parser.add_argument('--sum-channels', type=int, default=32, help='The number of channels at sum layers.')
 parser.add_argument('--depthwise', action='store_true', help='Whether to use depthwise convolution layers.')
 parser.add_argument('--n-pooling', type=int, default=0, help='The number of initial pooling product layers.')
 parser.add_argument(
