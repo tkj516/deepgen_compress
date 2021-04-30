@@ -182,6 +182,9 @@ class CodeBP(nn.Module):
         # Convert likelihoods back to probability
         self.M_out.data = 0.5 + torch.cat([M_out_diff, -M_out_diff], -1)/2
 
+        print(self.Hsx.data)
+        print(self.Hxs.data)
+
 #################################################################################################################
 # ITERATIVE MESSAGE PASSING ARCHIVE
 #################################################################################################################
