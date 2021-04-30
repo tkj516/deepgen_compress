@@ -19,13 +19,14 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from torchvision.datasets import MNIST, CIFAR10
 
-
 from torch_parallel.code_bp_torch_v2 import CodeBP
 from torch_parallel.grid_bp_torch import GridBP
 from torch_parallel.grid_gibbs import GibbsSampler
 from my_experiments.dgcspn import DgcSpn
 from spnflow.torch.transforms import Reshape
 from spnflow.utils.data import compute_mean_quantiles
+
+from tensorboardX import SummaryWriter
 
 mpl.rc('image', cmap='gray')
 
@@ -34,6 +35,8 @@ parser.add_argument('--ldpc_mat', type=str, default='H_28.mat', help="Path to LD
 parser.add_argument('--device', type=str, default='cuda:0', help="Device to run the code on")
 parser.add_argument('--num_iter', type=int, default=100, help="Number of bp iterations")
 parser.add_argument('--doperate', type=float, default=0.04, help="Dope rate")
+parser.add_argument('--console_display', action='store_true', default=False, help="Visualize results in matplotlib")
+parser.add_argument('--num_experiments', type=int, default=1, help="Number of bp experiments")
 # DGC-SPN arguments
 parser.add_argument('--dequantize', action='store_true', help='Whether to use dequantization.')
 parser.add_argument('--logit', type=float, default=None, help='The logit value to use for vision datasets.')
@@ -255,6 +258,9 @@ class SourceCodeBP():
         B_old = torch.tensor(float('nan') * np.ones((self.h, self.w))).to(device)
         start = time.time()
 
+        # Let's create a nice video and log it
+        video = [self.npot[..., 1].permute(2, 0, 1).unsqueeze(0).unsqueeze(0)]
+
         # Perform multiple iterations of belief propagation
         for i in range(num_iter):
 
@@ -264,6 +270,9 @@ class SourceCodeBP():
             # Calculate the belief
             self.B = self.M_from_grid * self.M_to_grid * self.npot
             self.B /= torch.sum(self.B, -1).unsqueeze(-1)
+
+            # Add frames to the video
+            video.append(self.B[..., 1].permute(2, 0, 1).unsqueeze(0).unsqueeze(0))
 
             # Termination condition to end belief propagation
             if torch.sum(torch.abs(self.B[..., 1] - B_old)).item() < 0.5:
@@ -277,7 +286,9 @@ class SourceCodeBP():
         end = time.time()
         print(f'Total time taken for decoding is {end - start}s')
 
-def test_source_code_bp():
+        return torch.cat(video, dim=1)
+
+def test_source_code_bp(console_display=False, writer=None, experiment_number=0):
 
     h = 28
     w = 28
@@ -302,18 +313,31 @@ def test_source_code_bp():
 
     # Decode the code using belief propagation
     print("[Decoding ...]")
-    source_code_bp.decode(num_iter=args.num_iter)
+    video = source_code_bp.decode(num_iter=args.num_iter)
 
-    # Visualize the decoded image
-    fig, ax = plt.subplots(3, 1)
-    ax[0].imshow(source_code_bp.samp.cpu().numpy().reshape(28, 28), vmin=0, vmax=1)
-    ax[0].set_title("Source Image")
-    ax[1].imshow(source_code_bp.npot.cpu()[..., 1].numpy(), vmin=0, vmax=1)
-    ax[1].set_title("Doping samples")
-    ax[2].imshow((source_code_bp.B.cpu()[..., 1] > 0.5).float().numpy(), vmin=0, vmax=1)
-    ax[2].set_title("Reconstructed Image")
-    plt.tight_layout()
-    plt.show()
+    # Log images to tensorboard
+    writer.add_video(f'convergence_video/{experiment_number}', video, fps=2, global_step=experiment_number)
+
+    if console_display:
+        # Visualize the decoded image
+        fig, ax = plt.subplots(3, 1)
+        ax[0].imshow(source_code_bp.samp.cpu().numpy().reshape(28, 28), vmin=0, vmax=1)
+        ax[0].set_title("Source Image")
+        ax[1].imshow(source_code_bp.npot.cpu()[..., 1].numpy(), vmin=0, vmax=1)
+        ax[1].set_title("Doping samples")
+        ax[2].imshow((source_code_bp.B.cpu()[..., 1] > 0.5).float().numpy(), vmin=0, vmax=1)
+        ax[2].set_title("Reconstructed Image")
+        plt.tight_layout()
+        plt.show()
 
 if __name__ == "__main__":
-    test_source_code_bp()
+
+    # Create the writer
+    timestamp = time.strftime("%Y-%m-%d_%H:%M:%S")
+    writer = SummaryWriter('bp_results/tensorboard/' + timestamp)
+
+    # Write the args to tensorboard
+    writer.add_text('config', str(args.__dict__))
+
+    for i in range(args.num_experiments):
+        test_source_code_bp(console_display=args.console_display, writer=writer, experiment_number=i)
