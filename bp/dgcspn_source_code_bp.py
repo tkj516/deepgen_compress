@@ -237,7 +237,7 @@ class SourceCodeBP():
         external_prob = (self.M_to_grid*self.npot).unsqueeze(0).permute(0, 3, 1, 2)
         self.M_to_code = self.source.message(external_prob)
         # Reshape this output
-        self.M_from_grid = self.M_from_grid.squeeze(0).reshape(self.h, self.w, 2)
+        self.M_from_grid = self.M_to_code.reshape(self.h, self.w, 2)
 
     @torch.no_grad()
     def decode(self, num_iter=1):
