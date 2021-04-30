@@ -130,7 +130,7 @@ class Source():
     def message(self, x):
 
         # Expect non log beliefs and convert them to log beliefs
-        external_log_probs = torch.log(x)
+        external_log_probs = torch.log(x) - torch.logsumexp(x, dim=1, keepdim=True)
 
         # Get probabilities of 0 at each pixel - do this in batches
         log_prob_0 = []
@@ -235,7 +235,7 @@ class SourceCodeBP():
         self.M_to_grid = self.M_from_code.reshape(self.h, self.w, 2)
 
         # Perform one step of source graph belief propagation
-        external_prob = (self.M_to_grid*self.npot).unsqueeze(0).permute(0, 3, 1, 2)
+        external_prob = (self.M_to_grid*self.npot).unsqueeze(0).permute(0, 3, 1, 2) # b, 2, h, w
         self.M_to_code = self.source.message(external_prob)
         print(self.M_to_code[:60, ...])
         # Reshape this output
