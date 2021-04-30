@@ -131,7 +131,6 @@ class Source():
 
         # Expect non log beliefs and convert them to log beliefs
         external_log_probs = torch.log(x)
-        print(external_log_probs)
 
         # Get probabilities of 0 at each pixel - do this in batches
         log_prob_0 = []
