@@ -146,6 +146,7 @@ class Source():
         
         # Normalize output probabilities using logsumexp
         message = torch.cat([log_prob_0, log_prob_1], dim=-1)
+        print(message[:60, ...])
         message -= torch.logsumexp(message, dim=-1, keepdim=True)
         
         return torch.exp(message)
