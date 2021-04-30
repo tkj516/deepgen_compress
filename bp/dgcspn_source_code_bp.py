@@ -240,7 +240,7 @@ class SourceCodeBP():
         self.M_to_code = self.source.message(external_prob)
         # TODO: Multiply with doping probability to set certain values correctly - same as setting nans to 0
         self.M_to_code = torch.where(torch.isnan(self.M_to_code), torch.tensor(0.0).to(device), self.M_to_code)
-        self.M_to_code /= self.M_to_code
+        self.M_to_code /= torch.sum(self.M_to_code, dim=-1, keepdim=True)
         print(self.M_to_code[:60, ...])
         # Reshape this output
         self.M_from_grid = self.M_to_code.reshape(self.h, self.w, 2)
