@@ -154,7 +154,7 @@ class Source():
         # Normalize output probabilities using logsumexp
         message = torch.cat([log_prob_0, log_prob_1], dim=-1)
 
-        # If nan then this was doped pixel
+        # If nan then this was doped pixel, replace nan with 0 prob => -inf log prob
         message = torch.where(torch.isnan(message), torch.tensor(float('-inf')).to(device), message)
         message -= torch.logsumexp(message, dim=-1, keepdim=True)
        
