@@ -171,6 +171,7 @@ class Source():
 
         # Compute the base distribution log-likelihoods
         z = self.model.base_layer(input)
+        z.requires_grad = True
 
         # If there are external probabilities per node add them here
         z_m = z + external_log_probs
