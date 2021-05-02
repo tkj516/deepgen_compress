@@ -24,8 +24,8 @@ if __name__ == '__main__':
     parser.add_argument('--dequantize', action='store_true', help='Whether to use dequantization.')
     parser.add_argument('--logit', type=float, default=None, help='The logit value to use for vision datasets.')
     parser.add_argument('--discriminative', action='store_true', help='Whether to use discriminative settings.')
-    parser.add_argument('--n-batches', type=int, default=8, help='The number of input distribution layer batches.')
-    parser.add_argument('--sum-channels', type=int, default=8, help='The number of channels at sum layers.')
+    parser.add_argument('--n-batches', type=int, default=2, help='The number of input distribution layer batches.')
+    parser.add_argument('--sum-channels', type=int, default=32, help='The number of channels at sum layers.')
     parser.add_argument('--depthwise', action='store_true', help='Whether to use depthwise convolution layers.')
     parser.add_argument('--n-pooling', type=int, default=0, help='The number of initial pooling product layers.')
     parser.add_argument(
@@ -49,6 +49,7 @@ if __name__ == '__main__':
     parser.add_argument('--weight-decay', type=float, default=0.0, help='L2 regularization factor.')
     parser.add_argument('--binary', action='store_true', default=False, help='Use binary model and binarize dataset')
     parser.add_argument('--continue_checkpoint', default=None, help='Checkpoint to continue training from')
+    parser.add_argument('--dataset', type=str, default='mnist', help='Dataset to use for training')
     args = parser.parse_args()
 
     # Instantiate a random state, used for reproducibility
@@ -57,27 +58,32 @@ if __name__ == '__main__':
     assert args.quantiles_loc is False or args.uniform_loc is None, \
         'Only one between --quantiles-loc and --uniform-loc can be defined'
 
-    # Load the MNIST dataset
-    in_size = (1, 28, 28)
-    transform = torchvision.transforms.Compose([
-                    torchvision.transforms.ToTensor(),
-                    Reshape(in_size),
-                    lambda x: (x > 0.5).float() if args.binary else x
-                ])
-    data_train = torchvision.datasets.MNIST('../examples/dataset', train=True, transform=transform, download=True)
-    data_test = torchvision.datasets.MNIST('../examples/dataset', train=False, transform=transform, download=True)
-    n_val = int(0.1 * len(data_train))
-    n_train = len(data_train) - n_val
-    data_train, data_val = torch.utils.data.random_split(data_train, [n_train, n_val])
+    if args.dataset == 'mnist':
+        # Load the MNIST dataset
+        in_size = (1, 28, 28)
+        transform = torchvision.transforms.Compose([
+                        torchvision.transforms.ToTensor(),
+                        Reshape(in_size),
+                        lambda x: (x > 0.5).float() if args.binary else x
+                    ])
+        data_train = torchvision.datasets.MNIST('../examples/dataset', train=True, transform=transform, download=True)
+        data_test = torchvision.datasets.MNIST('../examples/dataset', train=False, transform=transform, download=True)
+        n_val = int(0.1 * len(data_train))
+        n_train = len(data_train) - n_val
+        data_train, data_val = torch.utils.data.random_split(data_train, [n_train, n_val])
+    elif args.dataset == 'ising':
+        pass
+    else:
+        NotImplementedError(f'Model is not yet supported for {args.dataset}')
 
-    in_size = (1, 28, 28)
+    # Set the number of output classes
     if args.discriminative:
         out_classes = 10
     else:
         out_classes = 1
 
     # Create the results directory
-    directory = 'dgcspn'
+    directory = os.path.join('dgcspn', args.dataset)
     os.makedirs(directory, exist_ok=True)
     timestamp = time.strftime("%Y-%m-%d_%H:%M:%S")
     if args.discriminative:
@@ -88,7 +94,7 @@ if __name__ == '__main__':
         os.makedirs(directory, exist_ok=True)
 
     # Open the results JSON of the chosen dataset
-    filepath = os.path.join(directory, f'mnist_{timestamp}.json')
+    filepath = os.path.join(directory, f'{args.dataset}_{timestamp}.json')
     if os.path.isfile(filepath):
         with open(filepath, 'r') as file:
             results = json.load(file)
@@ -96,7 +102,7 @@ if __name__ == '__main__':
         results = dict()
 
     # Create the writer
-    writer = SummaryWriter('dgcspn/tensorboard/' + timestamp)
+    writer = SummaryWriter(os.path.join(directory, 'tensorboard', timestamp))
 
     # Write the arguments to tensorboard
     writer.add_text('config', str(args.__dict__))
