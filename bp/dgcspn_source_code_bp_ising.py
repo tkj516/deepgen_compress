@@ -25,7 +25,7 @@ from torch_parallel.grid_gibbs import GibbsSampler
 from my_experiments.dgcspn import DgcSpn
 from spnflow.torch.transforms import Reshape
 from spnflow.utils.data import compute_mean_quantiles
-from datasets import IsingDataset
+from my_experiments.datasets import IsingDataset
 
 from tensorboardX import SummaryWriter
 
