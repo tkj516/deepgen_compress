@@ -277,7 +277,7 @@ class SourceCodeBP():
 
         self.x = (self.H @ self.samp) % 2
 
-    @torch.no_grad()
+    # @torch.no_grad()
     def decode_step(self):
 
         # Perform one step of code graph belief propagation
@@ -301,7 +301,7 @@ class SourceCodeBP():
         # Reshape this output
         self.M_from_grid = self.M_to_code.reshape(self.h, self.w, 2)
 
-    @torch.no_grad()
+    # @torch.no_grad()
     def decode(self, num_iter=1):
 
         # Set the initial beliefs to all nans
