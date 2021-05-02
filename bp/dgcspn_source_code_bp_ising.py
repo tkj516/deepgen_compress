@@ -135,32 +135,65 @@ class Source():
         self.zero_input = torch.where(one_hot_input == 1, torch.tensor(0.0), torch.tensor(float('nan'))).to(device)
         self.one_input = torch.where(one_hot_input == 1, torch.tensor(1.0), torch.tensor(float('nan'))).to(device)
 
-    @torch.no_grad()
+    # @torch.no_grad()
+    # def message(self, x):
+
+    #     # Expect non log beliefs and convert them to log beliefs
+    #     external_log_probs = torch.log(x) - torch.logsumexp(torch.log(x), dim=1, keepdim=True)
+
+    #     # Get probabilities of 0 at each pixel - do this in batches
+    #     log_prob_0 = []
+    #     for i in range(56):
+    #         log_prob_0.append(self.model(self.zero_input[14*i:14*(i+1), ...], external_beliefs=external_log_probs).reshape(-1, 1))
+    #     log_prob_0 = torch.cat(log_prob_0, dim=0)
+
+    #     # Get probabilities of 1 at each pixel
+    #     log_prob_1 = []
+    #     for i in range(56):
+    #         log_prob_1.append(self.model(self.one_input[14*i:14*(i+1), ...], external_beliefs=external_log_probs).reshape(-1, 1))
+    #     log_prob_1 = torch.cat(log_prob_1, dim=0)
+        
+    #     # Normalize output probabilities using logsumexp
+    #     message = torch.cat([log_prob_0, log_prob_1], dim=-1)
+
+    #     # If nan then this was doped pixel, replace nan with 0 prob => -inf log prob
+    #     message = torch.where(torch.isnan(message), torch.tensor(float('-inf')).to(device), message)
+    #     message -= torch.logsumexp(message, dim=-1, keepdim=True)
+       
+    #     return torch.exp(message)
+
     def message(self, x):
 
         # Expect non log beliefs and convert them to log beliefs
         external_log_probs = torch.log(x) - torch.logsumexp(torch.log(x), dim=1, keepdim=True)
 
-        # Get probabilities of 0 at each pixel - do this in batches
-        log_prob_0 = []
-        for i in range(56):
-            log_prob_0.append(self.model(self.zero_input[14*i:14*(i+1), ...], external_beliefs=external_log_probs).reshape(-1, 1))
-        log_prob_0 = torch.cat(log_prob_0, dim=0)
+        input = float('nan') * torch.ones(1, 1, 28, 28).to(device)
 
-        # Get probabilities of 1 at each pixel
-        log_prob_1 = []
-        for i in range(56):
-            log_prob_1.append(self.model(self.one_input[14*i:14*(i+1), ...], external_beliefs=external_log_probs).reshape(-1, 1))
-        log_prob_1 = torch.cat(log_prob_1, dim=0)
-        
-        # Normalize output probabilities using logsumexp
-        message = torch.cat([log_prob_0, log_prob_1], dim=-1)
+        # Compute the base distribution log-likelihoods
+        z = self.model.base_layer(input)
 
+        # If there are external probabilities per node add them here
+        z += external_log_probs
+        z -= torch.logsumexp(z, dim=1, keepdim=True)
+
+        # Forward through the inner layers
+        y = z
+        for layer in self.model.layers:
+            y = layer(y)
+
+        # Forward through the root layer
+        y = self.model.root_layer(y)
+
+        # Compute the gradients at distribution leaves
+        (z_grad,) = torch.autograd.grad(y, z, grad_outputs=torch.ones_like(y))
+
+        # Reshape to get message
         # If nan then this was doped pixel, replace nan with 0 prob => -inf log prob
+        message = z_grad.squeeze(0).reshape(2, 784).permute(1, 0)
         message = torch.where(torch.isnan(message), torch.tensor(float('-inf')).to(device), message)
         message -= torch.logsumexp(message, dim=-1, keepdim=True)
-       
-        return torch.exp(message)
+
+        return message
 
 class SourceCodeBP():
 
