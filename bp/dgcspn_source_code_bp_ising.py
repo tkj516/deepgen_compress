@@ -175,7 +175,7 @@ class Source():
 
         # If there are external probabilities per node add them here
         z_m = z + external_log_probs
-        z_m -= torch.logsumexp(z_m, dim=1, keepdim=True)
+        z_m = z_m - torch.logsumexp(z_m, dim=1, keepdim=True)
 
         # Forward through the inner layers
         y = z_m
