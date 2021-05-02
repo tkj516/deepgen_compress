@@ -174,11 +174,11 @@ class Source():
         z.requires_grad = True
 
         # If there are external probabilities per node add them here
-        z_m = z + external_log_probs
-        z_m = z_m - torch.logsumexp(z_m, dim=1, keepdim=True)
+        z = z + external_log_probs
+        z = z - torch.logsumexp(z, dim=1, keepdim=True)
 
         # Forward through the inner layers
-        y = z_m
+        y = z
         for layer in self.model.layers:
             y = layer(y)
 
