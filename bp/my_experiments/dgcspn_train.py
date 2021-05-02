@@ -13,6 +13,7 @@ from dgcspn import DgcSpn
 from spnflow.torch.transforms import Reshape
 from spnflow.utils.data import compute_mean_quantiles
 from routines import torch_train, torch_test
+from datasets import IsingDataset
 
 from tensorboardX import SummaryWriter
 
@@ -72,7 +73,12 @@ if __name__ == '__main__':
         n_train = len(data_train) - n_val
         data_train, data_val = torch.utils.data.random_split(data_train, [n_train, n_val])
     elif args.dataset == 'ising':
-        pass
+        in_size = (1, 28, 28)
+        data_train = IsingDataset(phase='train')
+        data_test = IsingDataset(phase='test')
+        n_val = int(0.1 * len(data_train))
+        n_train = len(data_train) - n_val
+        data_train, data_val = torch.utils.data.random_split(data_train, [n_train, n_val])
     else:
         NotImplementedError(f'Model is not yet supported for {args.dataset}')
 
