@@ -14,6 +14,7 @@ from dgcspn import DgcSpn
 from spnflow.torch.transforms import Reshape
 from spnflow.utils.data import compute_mean_quantiles
 from routines import torch_train, torch_test
+from datasets import IsingDataset
 
 from tensorboardX import SummaryWriter
 
@@ -72,6 +73,7 @@ if __name__ == '__main__':
     parser.add_argument('--weight-decay', type=float, default=0.0, help='L2 regularization factor.')
     parser.add_argument('--binary', action='store_true', default=False, help='Use binary model and binarize dataset')
     parser.add_argument('--checkpoint', type=str, required=True, help='Path to checkpoint file')
+    parser.add_argument('--dataset', type=str, default='mnist', help='Dataset to use for training')
     args = parser.parse_args()
 
     # Instantiate a random state, used for reproducibility
@@ -80,18 +82,28 @@ if __name__ == '__main__':
     assert args.quantiles_loc is False or args.uniform_loc is None, \
         'Only one between --quantiles-loc and --uniform-loc can be defined'
 
-    # Load the MNIST dataset
-    in_size = (1, 28, 28)
-    transform = torchvision.transforms.Compose([
-                    torchvision.transforms.ToTensor(),
-                    Reshape(in_size),
-                    lambda x: (x > 0.5).float() if args.binary else x
-                ])
-    data_train = torchvision.datasets.MNIST('../examples/dataset', train=True, transform=transform, download=True)
-    data_test = torchvision.datasets.MNIST('../examples/dataset', train=False, transform=transform, download=True)
-    n_val = int(0.1 * len(data_train))
-    n_train = len(data_train) - n_val
-    data_train, data_val = torch.utils.data.random_split(data_train, [n_train, n_val])
+    if args.dataset == 'mnist':
+        # Load the MNIST dataset
+        in_size = (1, 28, 28)
+        transform = torchvision.transforms.Compose([
+                        torchvision.transforms.ToTensor(),
+                        Reshape(in_size),
+                        lambda x: (x > 0.5).float() if args.binary else x
+                    ])
+        data_train = torchvision.datasets.MNIST('../examples/dataset', train=True, transform=transform, download=True)
+        data_test = torchvision.datasets.MNIST('../examples/dataset', train=False, transform=transform, download=True)
+        n_val = int(0.1 * len(data_train))
+        n_train = len(data_train) - n_val
+        data_train, data_val = torch.utils.data.random_split(data_train, [n_train, n_val])
+    elif args.dataset == 'ising':
+        in_size = (1, 28, 28)
+        data_train = IsingDataset(phase='train')
+        data_test = IsingDataset(phase='test')
+        n_val = int(0.1 * len(data_train))
+        n_train = len(data_train) - n_val
+        data_train, data_val = torch.utils.data.random_split(data_train, [n_train, n_val])
+    else:
+        NotImplementedError(f'Model is not yet supported for {args.dataset}')
 
     out_classes = 1
 
@@ -139,7 +151,7 @@ if __name__ == '__main__':
 
     # Create the writer
     timestamp = time.strftime("%Y-%m-%d_%H:%M:%S")
-    writer = SummaryWriter('../bp_results/dgcspn/tensorboard/image_completion/' + timestamp)
+    writer = SummaryWriter(f'dgcspn/{args.dataset}/image_completion/tensorboard/' + timestamp)
 
     # Write the args to tensorboard
     writer.add_text('config', str(args.__dict__))
