@@ -87,6 +87,7 @@ def torch_train(
     )
 
     # Instantiate the optimizer
+    model.to(device)
     optimizer = optimizer_class(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     # Load model and optimizer if continue checkpoint provided
