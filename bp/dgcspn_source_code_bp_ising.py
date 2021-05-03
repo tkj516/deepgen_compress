@@ -297,7 +297,7 @@ class SourceCodeBP():
         self.video.append(self.B[..., 1:].permute(2, 0, 1).unsqueeze(0).unsqueeze(0))
 
         # Perform one step of source graph belief propagation
-        external_prob = (self.M_to_grid*self.npot).unsqueeze(0).permute(0, 3, 1, 2) # b, 2, h, w
+        external_prob = 2*(self.M_to_grid*self.npot).unsqueeze(0).permute(0, 3, 1, 2) # b, 2, h, w
         self.M_to_code = self.source.message(external_prob)
         # Reshape this output
         self.M_from_grid = self.M_to_code.reshape(self.h, self.w, 2)
