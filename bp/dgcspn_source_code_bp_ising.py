@@ -193,7 +193,7 @@ class Source():
         message = z_grad.squeeze(0).reshape(2, 784).permute(1, 0)
         message = torch.where(torch.isnan(message), torch.tensor(float('-inf')).to(device), message)
         if torch.isnan(y).item():
-            print(external_log_probs)
+            print(torch.isnan(external_log_probs).float().sum())
             print(z)
             print(message)
             exit(0)
