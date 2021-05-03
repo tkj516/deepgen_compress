@@ -164,6 +164,9 @@ class Source():
         # Reshape to get message
         # If nan then this was doped pixel, replace nan with 0 prob => -inf log prob
         message = z_grad.squeeze(0).reshape(2, 784).permute(1, 0)
+        message = torch.log(message) - external_log_probs
+        message = torch.where(torch.isnan(message), external_log_probs, message)
+        message = torch.exp(message)
         # if torch.isnan(message).float().sum() > 0:
         #     print("Warning!")
         # message = torch.where(torch.isnan(message), torch.tensor(float('-inf')).to(device), message)
