@@ -166,6 +166,7 @@ class Source():
 
         # Expect non log beliefs and convert them to log beliefs
         external_log_probs = torch.log(x) - torch.logsumexp(torch.log(x), dim=1, keepdim=True)
+        print(external_log_probs)
 
         input = float('nan') * torch.ones(1, 1, 28, 28).to(device)
 
@@ -175,7 +176,6 @@ class Source():
 
         # If there are external probabilities per node add them here
         z = z + external_log_probs
-        print(z)
         z = z - torch.logsumexp(z, dim=1, keepdim=True)
 
         # Forward through the inner layers
