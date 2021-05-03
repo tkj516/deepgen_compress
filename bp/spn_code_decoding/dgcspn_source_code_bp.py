@@ -151,7 +151,7 @@ class Source():
         zm = zm - torch.logsumexp(zm, dim=1, keepdim=True)
 
         # Forward through the inner layers
-        y = z
+        y = zm
         for layer in self.model.layers:
             y = layer(y)
 
