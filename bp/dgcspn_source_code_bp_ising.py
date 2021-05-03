@@ -166,7 +166,6 @@ class Source():
 
         # Expect non log beliefs and convert them to log beliefs
         external_log_probs = torch.log(x) - torch.logsumexp(torch.log(x), dim=1, keepdim=True)
-        print(external_log_probs)
 
         input = float('nan') * torch.ones(1, 1, 28, 28).to(device)
 
