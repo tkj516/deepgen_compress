@@ -195,8 +195,8 @@ class Source():
         if torch.isnan(y).item():
             # print(torch.isnan(torch.log(x)).float().sum())
             print(x)
-            print(z)
-            print(message)
+            # print(z)
+            # print(message)
             exit(0)
         # message -= torch.logsumexp(message, dim=-1, keepdim=True)
 
