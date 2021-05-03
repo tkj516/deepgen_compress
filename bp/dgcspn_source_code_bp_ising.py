@@ -193,7 +193,7 @@ class Source():
         # If nan then this was doped pixel, replace nan with 0 prob => -inf log prob
         message = z_grad.squeeze(0).reshape(2, 784).permute(1, 0)
         message = torch.where(torch.isnan(message), torch.tensor(float('-inf')).to(device), message)
-        message -= torch.logsumexp(message, dim=-1, keepdim=True)
+        # message -= torch.logsumexp(message, dim=-1, keepdim=True)
         print(message)
 
         return message
