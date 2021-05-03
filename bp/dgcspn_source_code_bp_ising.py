@@ -194,7 +194,6 @@ class Source():
         message = z_grad.squeeze(0).reshape(2, 784).permute(1, 0)
         message = torch.where(torch.isnan(message), torch.tensor(float('-inf')).to(device), message)
         # message -= torch.logsumexp(message, dim=-1, keepdim=True)
-        print(message)
 
         return message
 
