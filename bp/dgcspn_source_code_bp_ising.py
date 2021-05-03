@@ -302,7 +302,7 @@ class SourceCodeBP():
         # to the source graph, otherwise just multiplying will result in [0, 0] probability.  To do this 
         # we just change every doped pixel row back to [0, 1] or [1, 0] as specified in npot
         external_prob = self.M_to_grid*self.npot
-        external_prob = torch.where(torch.tile(external_prob.sum(-1, keepdim=True)), (1, 1, external_prob.shape[-1]), self.npot, external_prob)
+        external_prob = torch.where(external_prob.sum(-1, keepdim=True).repeat(1, 1, external_prob.shape[-1]), self.npot, external_prob)
         # external_prob = (self.M_to_grid*self.npot).unsqueeze(0).permute(0, 3, 1, 2) # b, 2, h, w
         external_prob = external_prob.unsqueeze(0).permute(0, 3, 1, 2)
         self.M_to_code = self.source.message(external_prob)
