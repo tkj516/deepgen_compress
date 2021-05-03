@@ -164,7 +164,7 @@ class Source():
         # Reshape to get message
         # If nan then this was doped pixel, replace nan with 0 prob => -inf log prob
         message = z_grad.squeeze(0).reshape(2, 784).permute(1, 0)
-        message = torch.log(message) - external_log_probs
+        message = torch.log(message) - external_log_probs.squeeze(0).permute(1, 2, 0)
         message = torch.where(torch.isnan(message), external_log_probs, message)
         message = torch.exp(message)
         # if torch.isnan(message).float().sum() > 0:
@@ -306,9 +306,9 @@ class SourceCodeBP():
         # to the source graph, otherwise just multiplying will result in [0, 0] probability.  To do this 
         # we just change every doped pixel row back to [0, 1] or [1, 0] as specified in npot
         external_prob = self.M_to_grid*self.npot
-        external_prob = torch.where((external_prob.sum(-1, keepdim=True) == 0).repeat(1, 1, external_prob.shape[-1]), self.npot, external_prob) # b, 2, h, w
+        external_prob = torch.where((external_prob.sum(-1, keepdim=True) == 0).repeat(1, 1, external_prob.shape[-1]), self.npot, external_prob)
         # external_prob = (1 + self.M_to_grid)*self.npot
-        external_prob = external_prob.unsqueeze(0).permute(0, 3, 1, 2)
+        external_prob = external_prob.unsqueeze(0).permute(0, 3, 1, 2) # b, 2, h, w
         if fast_message:
             self.M_to_code = self.source.message_fast(external_prob)
         else:
