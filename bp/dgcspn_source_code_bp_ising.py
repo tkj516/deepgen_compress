@@ -130,10 +130,10 @@ class Source():
         self.model.eval()
 
         # Store the input tensor for calculating 0 and 1 probabilities
-        one_hot_input = torch.tensor(np.arange(784)).reshape(28, 28)
-        one_hot_input = F.one_hot(one_hot_input, num_classes=784).permute(2, 0, 1).unsqueeze(1) # 784, 1, 28, 28
-        self.zero_input = torch.where(one_hot_input == 1, torch.tensor(0.0), torch.tensor(float('nan'))).to(device)
-        self.one_input = torch.where(one_hot_input == 1, torch.tensor(1.0), torch.tensor(float('nan'))).to(device)
+        # one_hot_input = torch.tensor(np.arange(784)).reshape(28, 28)
+        # one_hot_input = F.one_hot(one_hot_input, num_classes=784).permute(2, 0, 1).unsqueeze(1) # 784, 1, 28, 28
+        # self.zero_input = torch.where(one_hot_input == 1, torch.tensor(0.0), torch.tensor(float('nan'))).to(device)
+        # self.one_input = torch.where(one_hot_input == 1, torch.tensor(1.0), torch.tensor(float('nan'))).to(device)
 
     # @torch.no_grad()
     # def message(self, x):
@@ -297,7 +297,14 @@ class SourceCodeBP():
         self.video.append(self.B[..., 1:].permute(2, 0, 1).unsqueeze(0).unsqueeze(0))
 
         # Perform one step of source graph belief propagation
-        external_prob = ((1 + self.M_to_grid)*self.npot).unsqueeze(0).permute(0, 3, 1, 2) # b, 2, h, w
+        # TODO: Make sure that there is no conflict in the probabilities.  For example if npot
+        # says [1, 0] and code graph says [0, 1] we need to make sure it is [1, 0] before it is passed
+        # to the source graph, otherwise just multiplying will result in [0, 0] probability.  To do this 
+        # we just change every doped pixel row back to [0, 1] or [1, 0] as specified in npot
+        external_prob = self.M_to_grid*self.npot
+        external_prob = torch.where(torch.tile(external_prob.sum(-1, keepdim=True)), (1, 1, external_prob.shape[-1]), self.npot, external_prob)
+        # external_prob = (self.M_to_grid*self.npot).unsqueeze(0).permute(0, 3, 1, 2) # b, 2, h, w
+        external_prob = external_prob.unsqueeze(0).permute(0, 3, 1, 2)
         self.M_to_code = self.source.message(external_prob)
         # Reshape this output
         self.M_from_grid = self.M_to_code.reshape(self.h, self.w, 2)
