@@ -177,7 +177,6 @@ class Source():
         # If there are external probabilities per node add them here
         z = z + external_log_probs
         z = z - torch.logsumexp(z, dim=1, keepdim=True)
-        print(z)
 
         # Forward through the inner layers
         y = z
@@ -195,6 +194,7 @@ class Source():
         message = z_grad.squeeze(0).reshape(2, 784).permute(1, 0)
         message = torch.where(torch.isnan(message), torch.tensor(float('-inf')).to(device), message)
         message -= torch.logsumexp(message, dim=-1, keepdim=True)
+        print(message)
 
         return message
 
