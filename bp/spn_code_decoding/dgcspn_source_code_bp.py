@@ -195,7 +195,7 @@ class SourceCodeBP():
 
         if args.dataset == 'mnist':
             # Setup the MNIST dataset
-            self.dataset = MNIST('/fs/data/tejasj/MNIST', train=False, transform=self.transform)
+            self.dataset = MNIST('/fs/data/tejasj/MNIST/MNIST', train=False, transform=self.transform)
         elif args.dataset == 'ising':
             self.dataset = IsingDataset(phase='test')
         else:
