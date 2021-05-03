@@ -325,10 +325,6 @@ class SourceCodeBP():
         # Let's create a nice video and log it
         self.video = [self.npot[..., 1:].permute(2, 0, 1).unsqueeze(0).unsqueeze(0)]
 
-        # Start decoding using fast message passing
-        print('Starting decoding using fast message passing')
-        fast_message_done=False
-
         # Perform multiple iterations of belief propagation
         for i in range(num_iter):
 
@@ -351,41 +347,6 @@ class SourceCodeBP():
             # Compute the number of errors and print some information
             errs = torch.sum(torch.abs((self.B[..., 1] > 0.5).float() - self.samp.reshape(self.h, self.w))).item()
             print(f'Iteration {i}: {errs} errors')
-
-        # If fast message passing did not work try slow message passing
-        if not fast_message_done:
-            print('Starting slow message passing')
-
-            self.code.reset()
-            self.M_to_code = None
-            self.M_to_grid = None
-            self.B = None
-
-            # Let's create a nice video and log it
-            self.video = [self.npot[..., 1:].permute(2, 0, 1).unsqueeze(0).unsqueeze(0)]
-
-            # Perform multiple iterations of belief propagation
-            for i in range(num_iter):
-
-                # Perform a step of message passing/decoding
-                self.decode_step(fast_message=False)
-
-                # Calculate the belief
-                self.B = self.M_from_grid * self.M_to_grid * self.npot
-                self.B /= torch.sum(self.B, -1).unsqueeze(-1)
-
-                # Add frames to the video
-                self.video.append(self.B[..., 1:].permute(2, 0, 1).unsqueeze(0).unsqueeze(0))
-
-                # Termination condition to end belief propagation
-                if torch.sum(torch.abs(self.B[..., 1] - B_old)).item() < 0.5:
-                    fast_message_done = True
-                    break
-                B_old = self.B[..., 1]
-
-                # Compute the number of errors and print some information
-                errs = torch.sum(torch.abs((self.B[..., 1] > 0.5).float() - self.samp.reshape(self.h, self.w))).item()
-                print(f'Iteration {i}: {errs} errors')
 
         end = time.time()
         print(f'Total time taken for decoding is {end - start}s')
