@@ -177,6 +177,8 @@ class Source():
         z = z + external_log_probs
         z = z - torch.logsumexp(z, dim=1, keepdim=True)
 
+        print(z)
+
         # Forward through the inner layers
         y = z
         for layer in self.model.layers:
@@ -187,8 +189,6 @@ class Source():
 
         # Compute the gradients at distribution leaves
         (z_grad,) = torch.autograd.grad(y, z, grad_outputs=torch.ones_like(y))
-
-        print(z_grad)
 
         # Reshape to get message
         # If nan then this was doped pixel, replace nan with 0 prob => -inf log prob
