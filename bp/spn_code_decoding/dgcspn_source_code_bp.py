@@ -353,6 +353,9 @@ class SourceCodeBP():
             print('Starting slow message passing')
 
             self.code.reset()
+            self.M_to_code = None
+            self.M_to_grid = None
+            self.B = None
 
             # Let's create a nice video and log it
             self.video = [self.npot[..., 1:].permute(2, 0, 1).unsqueeze(0).unsqueeze(0)]
@@ -362,9 +365,6 @@ class SourceCodeBP():
 
                 # Perform a step of message passing/decoding
                 self.decode_step(fast_message=False)
-                self.M_to_code = None
-                self.M_to_grid = None
-                self.B = None
 
                 # Calculate the belief
                 self.B = self.M_from_grid * self.M_to_grid * self.npot
