@@ -162,14 +162,13 @@ class Source():
         (z_grad,) = torch.autograd.grad(y, z, grad_outputs=torch.ones_like(y))
 
         # Reshape to get message
-        # If nan then this was doped pixel, replace nan with 0 prob => -inf log prob
         message = z_grad.squeeze(0).reshape(2, 784).permute(1, 0)
+        # If you calculate the derivative the result must bust divided by the external log prob
+        # Remember that the derivative at an indicator enforces that the pixel is either 0 or 1
+        # But it was actually scaled by the external prob, so remove it to resemble slow message passing
         message = torch.log(message) - external_log_probs.squeeze(0).permute(1, 2, 0).reshape(-1, 2)
         message = torch.where(torch.isnan(message), external_log_probs.squeeze(0).permute(1, 2, 0).reshape(-1, 2), message)
         message = torch.exp(message)
-        # if torch.isnan(message).float().sum() > 0:
-        #     print("Warning!")
-        # message = torch.where(torch.isnan(message), torch.tensor(float('-inf')).to(device), message)
 
         return message
 
