@@ -32,7 +32,7 @@ from tensorboardX import SummaryWriter
 mpl.rc('image', cmap='gray')
 
 parser = argparse.ArgumentParser(description='Belief propagation training arguments')
-parser.add_argument('--ldpc_mat', type=str, default='H_28.mat', help="Path to LDPC matrix")
+parser.add_argument('--ldpc_mat', type=str, default='../H_28.mat', help="Path to LDPC matrix")
 parser.add_argument('--device', type=str, default='cuda:0', help="Device to run the code on")
 parser.add_argument('--num_iter', type=int, default=100, help="Number of bp iterations")
 parser.add_argument('--doperate', type=float, default=0.04, help="Dope rate")
@@ -195,7 +195,7 @@ class SourceCodeBP():
 
         if args.dataset == 'mnist':
             # Setup the MNIST dataset
-            self.dataset = MNIST('../../MNIST', train=False, transform=self.transform)
+            self.dataset = MNIST('/fs/data/tejasj/MNIST', train=False, transform=self.transform)
         elif args.dataset == 'ising':
             self.dataset = IsingDataset(phase='test')
         else:
