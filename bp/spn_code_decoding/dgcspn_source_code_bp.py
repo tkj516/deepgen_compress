@@ -349,7 +349,7 @@ class SourceCodeBP():
             print(f'Iteration {i}: {errs} errors')
 
         # If fast message passing did not work try slow message passing
-        if ~fast_message_done:
+        if not fast_message_done:
             print('Starting slow message passing')
 
             self.code.reset()
