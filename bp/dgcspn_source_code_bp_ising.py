@@ -194,6 +194,7 @@ class Source():
         message = torch.where(torch.isnan(message), torch.tensor(float('-inf')).to(device), message)
         if torch.isnan(y).item():
             print(external_log_probs)
+            print(z)
             print(message)
             exit(0)
         # message -= torch.logsumexp(message, dim=-1, keepdim=True)
