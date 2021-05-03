@@ -129,7 +129,13 @@ class Source():
         self.model.load_state_dict(model_checkpoint['model_state_dict'])
         self.model.eval()
 
-    def message(self, x):
+        # Store the input tensor for calculating 0 and 1 probabilities
+        one_hot_input = torch.tensor(np.arange(784)).reshape(28, 28)
+        one_hot_input = F.one_hot(one_hot_input, num_classes=784).permute(2, 0, 1).unsqueeze(1) # 784, 1, 28, 28
+        self.zero_input = torch.where(one_hot_input == 1, torch.tensor(0.0), torch.tensor(float('nan'))).to(device)
+        self.one_input = torch.where(one_hot_input == 1, torch.tensor(1.0), torch.tensor(float('nan'))).to(device)
+
+    def message_fast(self, x):
 
         # Expect non log beliefs and convert them to log beliefs
         external_log_probs = torch.log(x) - torch.logsumexp(torch.log(x), dim=1, keepdim=True)
@@ -161,6 +167,33 @@ class Source():
         message = torch.where(torch.isnan(message), torch.tensor(float('-inf')).to(device), message)
 
         return message
+
+    @torch.no_grad()
+    def message_slow(self, x):
+
+        # Expect non log beliefs and convert them to log beliefs
+        external_log_probs = torch.log(x) - torch.logsumexp(torch.log(x), dim=1, keepdim=True)
+
+        # Get probabilities of 0 at each pixel - do this in batches
+        log_prob_0 = []
+        for i in range(56):
+            log_prob_0.append(self.model(self.zero_input[14*i:14*(i+1), ...], external_beliefs=external_log_probs).reshape(-1, 1))
+        log_prob_0 = torch.cat(log_prob_0, dim=0)
+
+        # Get probabilities of 1 at each pixel
+        log_prob_1 = []
+        for i in range(56):
+            log_prob_1.append(self.model(self.one_input[14*i:14*(i+1), ...], external_beliefs=external_log_probs).reshape(-1, 1))
+        log_prob_1 = torch.cat(log_prob_1, dim=0)
+        
+        # Normalize output probabilities using logsumexp
+        message = torch.cat([log_prob_0, log_prob_1], dim=-1)
+
+        # If nan then this was doped pixel, replace nan with 0 prob => -inf log prob
+        message = torch.where(torch.isnan(message), torch.tensor(float('-inf')).to(device), message)
+        message -= torch.logsumexp(message, dim=-1, keepdim=True)
+       
+        return torch.exp(message)
 
 class SourceCodeBP():
 
@@ -245,7 +278,7 @@ class SourceCodeBP():
         self.x = (self.H @ self.samp) % 2
 
     # @torch.no_grad()
-    def decode_step(self):
+    def decode_step(self, fast_message=True):
 
         # Perform one step of code graph belief propagation
         self.code(self.ps, self.x, self.M_to_code)
@@ -267,11 +300,14 @@ class SourceCodeBP():
         # says [1, 0] and code graph says [0, 1] we need to make sure it is [1, 0] before it is passed
         # to the source graph, otherwise just multiplying will result in [0, 0] probability.  To do this 
         # we just change every doped pixel row back to [0, 1] or [1, 0] as specified in npot
-        # external_prob = self.M_to_grid*self.npot
-        # external_prob = torch.where((external_prob.sum(-1, keepdim=True) == 0).repeat(1, 1, external_prob.shape[-1]), self.npot, external_prob) # b, 2, h, w
-        external_prob = (1 + self.M_to_grid)*self.npot
+        external_prob = self.M_to_grid*self.npot
+        external_prob = torch.where((external_prob.sum(-1, keepdim=True) == 0).repeat(1, 1, external_prob.shape[-1]), self.npot, external_prob) # b, 2, h, w
+        # external_prob = (1 + self.M_to_grid)*self.npot
         external_prob = external_prob.unsqueeze(0).permute(0, 3, 1, 2)
-        self.M_to_code = self.source.message(external_prob)
+        if fast_message:
+            self.M_to_code = self.source.message_fast(external_prob)
+        else:
+            self.M_to_code = self.source.message_slow(external_prob)
         # Reshape this output
         self.M_from_grid = self.M_to_code.reshape(self.h, self.w, 2)
 
@@ -285,11 +321,15 @@ class SourceCodeBP():
         # Let's create a nice video and log it
         self.video = [self.npot[..., 1:].permute(2, 0, 1).unsqueeze(0).unsqueeze(0)]
 
+        # Start decoding using fast message passing
+        print('Starting decoding using fast message passing')
+        fast_message_done=False
+
         # Perform multiple iterations of belief propagation
         for i in range(num_iter):
 
             # Perform a step of message passing/decoding
-            self.decode_step()
+            self.decode_step(fast_message=True)
 
             # Calculate the belief
             self.B = self.M_from_grid * self.M_to_grid * self.npot
@@ -300,12 +340,43 @@ class SourceCodeBP():
 
             # Termination condition to end belief propagation
             if torch.sum(torch.abs(self.B[..., 1] - B_old)).item() < 0.5:
+                fast_message_done = True
                 break
             B_old = self.B[..., 1]
 
             # Compute the number of errors and print some information
             errs = torch.sum(torch.abs((self.B[..., 1] > 0.5).float() - self.samp.reshape(self.h, self.w))).item()
             print(f'Iteration {i}: {errs} errors')
+
+        # If fast message passing did not work try slow message passing
+        if ~fast_message_done:
+            print('Starting slow message passing')
+
+            # Let's create a nice video and log it
+            self.video = [self.npot[..., 1:].permute(2, 0, 1).unsqueeze(0).unsqueeze(0)]
+
+            # Perform multiple iterations of belief propagation
+            for i in range(num_iter):
+
+                # Perform a step of message passing/decoding
+                self.decode_step(fast_message=False)
+
+                # Calculate the belief
+                self.B = self.M_from_grid * self.M_to_grid * self.npot
+                self.B /= torch.sum(self.B, -1).unsqueeze(-1)
+
+                # Add frames to the video
+                self.video.append(self.B[..., 1:].permute(2, 0, 1).unsqueeze(0).unsqueeze(0))
+
+                # Termination condition to end belief propagation
+                if torch.sum(torch.abs(self.B[..., 1] - B_old)).item() < 0.5:
+                    fast_message_done = True
+                    break
+                B_old = self.B[..., 1]
+
+                # Compute the number of errors and print some information
+                errs = torch.sum(torch.abs((self.B[..., 1] > 0.5).float() - self.samp.reshape(self.h, self.w))).item()
+                print(f'Iteration {i}: {errs} errors')
 
         end = time.time()
         print(f'Total time taken for decoding is {end - start}s')
