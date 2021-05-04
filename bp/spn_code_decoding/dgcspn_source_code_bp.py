@@ -26,6 +26,7 @@ from my_experiments.dgcspn import DgcSpn
 from spnflow.torch.transforms import Reshape
 from spnflow.utils.data import compute_mean_quantiles
 from my_experiments.datasets import IsingDataset
+from ldpc_generate import pyldpc_generate
 
 from tensorboardX import SummaryWriter
 
@@ -36,6 +37,7 @@ parser.add_argument('--ldpc_mat', type=str, default='../H_28.mat', help="Path to
 parser.add_argument('--device', type=str, default='cuda:0', help="Device to run the code on")
 parser.add_argument('--num_iter', type=int, default=100, help="Number of bp iterations")
 parser.add_argument('--doperate', type=float, default=0.04, help="Dope rate")
+parser.add_argument('--rate', type=float, default=0.5, help='Compression rate')
 parser.add_argument('--console_display', action='store_true', default=False, help="Visualize results in matplotlib")
 parser.add_argument('--num_experiments', type=int, default=1, help="Number of bp experiments")
 # DGC-SPN arguments
@@ -359,7 +361,9 @@ def test_source_code_bp(console_display=False, writer=None, experiment_number=0)
     w = 28
 
     # Load the LDPC matrix
-    H = torch.FloatTensor(loadmat(args.ldpc_mat)['Hf']).to(device)
+    # H = torch.FloatTensor(loadmat(args.ldpc_mat)['Hf']).to(device)
+    H = pyldpc_generate.generate(int(rate*h*w), h*w, 3.0, 2, 123)
+    H = torch.FloatTensor(np.array(H.to(dense)).astype('float32')).to(device)
 
     # Intialize the source-code decoding graph
     source_code_bp = SourceCodeBP(H, h=h, w=w, doperate=args.doperate)
