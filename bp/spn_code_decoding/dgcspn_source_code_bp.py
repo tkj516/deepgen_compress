@@ -363,7 +363,7 @@ def test_source_code_bp(console_display=False, writer=None, experiment_number=0)
     # Load the LDPC matrix
     # H = torch.FloatTensor(loadmat(args.ldpc_mat)['Hf']).to(device)
     H = pyldpc_generate.generate(int(args.rate*h*w), h*w, 3.0, 2, 123)
-    H = torch.FloatTensor(np.array(H.to(dense)).astype('float32')).to(device)
+    H = torch.FloatTensor(np.array(H.todense()).astype('float32')).to(device)
 
     # Intialize the source-code decoding graph
     source_code_bp = SourceCodeBP(H, h=h, w=w, doperate=args.doperate)
