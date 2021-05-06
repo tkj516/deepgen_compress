@@ -13,7 +13,7 @@ from dgcspn import DgcSpn
 from spnflow.torch.transforms import Reshape
 from spnflow.utils.data import compute_mean_quantiles
 from routines import torch_train, torch_test
-from datasets import IsingDataset
+from .datasets import IsingDataset
 
 from tensorboardX import SummaryWriter
 
