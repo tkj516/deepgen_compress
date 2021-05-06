@@ -172,7 +172,7 @@ if __name__ == '__main__':
                     weight_decay=args.weight_decay,
                     writer=writer,
                     epochs=args.epochs,
-                    continue_checkpoint=args.continue_checkpoint
+                    continue_checkpoint=args.continue_checkpoint,
                     device=device)
 
         (nll, accuracy) = torch_test(model, data_test, setting='discriminative', device=device)
