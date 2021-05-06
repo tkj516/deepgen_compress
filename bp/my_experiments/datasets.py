@@ -15,15 +15,17 @@ class IsingDataset(Dataset):
         # Choose the phase
         self.phase = phase
 
+        # Read the training files from the mat file
+        self.files = sorted(os.listdir(self.root_dir))
+
         # Choose the number of files
         if self.phase == 'train':
             start_idx = 0
-            end_idx = 70000
+            end_idx = len(0.9*self.files)
         else:
-            start_idx = 70000
-            end_idx = 75000
+            start_idx = len(0.9*self.files)
+            end_idx = len(self.files)
 
-        # Read the training files from the mat file
         self.files = sorted(os.listdir(self.root_dir))[start_idx:end_idx]
 
     def __len__(self):

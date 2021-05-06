@@ -40,6 +40,9 @@ parser.add_argument('--doperate', type=float, default=0.04, help="Dope rate")
 parser.add_argument('--rate', type=float, default=0.5, help='Compression rate')
 parser.add_argument('--console_display', action='store_true', default=False, help="Visualize results in matplotlib")
 parser.add_argument('--num_experiments', type=int, default=1, help="Number of bp experiments")
+parser.add_argument('--root_dir', type=str, default='/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/datasets/ising_28_05_09_75000',
+                    help='Dataset root directory')
+parser.add_argument('--phase', type=str, default='test', help='Phase option for Ising dataset')
 # DGC-SPN arguments
 parser.add_argument('--dequantize', action='store_true', help='Whether to use dequantization.')
 parser.add_argument('--logit', type=float, default=None, help='The logit value to use for vision datasets.')
@@ -137,7 +140,7 @@ class Source():
         self.zero_input = torch.where(one_hot_input == 1, torch.tensor(0.0), torch.tensor(float('nan'))).to(device)
         self.one_input = torch.where(one_hot_input == 1, torch.tensor(1.0), torch.tensor(float('nan'))).to(device)
 
-    def message_fast(self, x):
+    def message_fast(self, x, dope_mask):
 
         # Expect non log beliefs and convert them to log beliefs
         external_log_probs = torch.log(x) - torch.logsumexp(torch.log(x), dim=1, keepdim=True)
@@ -169,6 +172,9 @@ class Source():
         # Remember that the derivative at an indicator enforces that the pixel is either 0 or 1
         # But it was actually scaled by the external prob, so remove it to resemble slow message passing
         message = torch.log(message) - external_log_probs.squeeze(0).permute(1, 2, 0).reshape(-1, 2)
+        # Replace doped probabilities with correct label
+        message = torch.where(dope_mask == 1, external_log_probs.squeeze(0).permute(1, 2, 0).reshape(-1, 2), message)
+        # Remove nans after division
         message = torch.where(torch.isnan(message), external_log_probs.squeeze(0).permute(1, 2, 0).reshape(-1, 2), message)
         message = torch.exp(message)
 
@@ -236,7 +242,7 @@ class SourceCodeBP():
             # Setup the MNIST dataset
             self.dataset = MNIST('../../../MNIST', train=False, transform=self.transform)
         elif args.dataset == 'ising':
-            self.dataset = IsingDataset(phase='test')
+            self.dataset = IsingDataset(root_dir=args.root_dir, phase=args.phase)
         else:
             NotImplementedError(f'Model is not yet supported for {args.dataset}')
 
@@ -252,6 +258,8 @@ class SourceCodeBP():
 
         # Store a matrix for doping probabilities
         self.ps = torch.FloatTensor(np.tile(np.array([1-p, p]), (h*w, 1))).to(device)
+        # Store a matrix for masking
+        self.mask = torch.zeros(h*w, 2).to(device)
 
         # Input image
         self.samp = None
@@ -268,6 +276,7 @@ class SourceCodeBP():
 
         indices = np.random.choice(self.N, size=int(self.N*self.doperate), replace=False)
         self.ps[indices, 0], self.ps[indices, 1] = (self.samp[indices, 0] == 0).float(), (self.samp[indices, 0] == 1).float()
+        self.mask[indices, 0], self.mask[indices, 1] = 1.0, 1.0
         # Update the node potential after doping
         self.npot = self.ps.reshape(self.h, self.w, 2)
 
@@ -311,7 +320,7 @@ class SourceCodeBP():
         # external_prob = (1 + self.M_to_grid)*self.npot
         external_prob = external_prob.unsqueeze(0).permute(0, 3, 1, 2) # b, 2, h, w
         if fast_message:
-            self.M_to_code = self.source.message_fast(external_prob)
+            self.M_to_code = self.source.message_fast(external_prob, self.mask)
         else:
             self.M_to_code = self.source.message_slow(external_prob)
         # Reshape this output
