@@ -53,6 +53,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='mnist', help='Dataset to use for training')
     parser.add_argument('--root_dir', type=str, default='/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/datasets/ising_28_05_09_75000',
                     help='Dataset root directory')
+    parser.add_argument('--gpu_id', type=int, default=0, help="GPU device to use")
     args = parser.parse_args()
 
     # Instantiate a random state, used for reproducibility
@@ -193,7 +194,8 @@ if __name__ == '__main__':
                     writer=writer,
                     epochs=args.epochs,
                     checkpoint_name=checkpoint_name,
-                    continue_checkpoint=args.continue_checkpoint)
+                    continue_checkpoint=args.continue_checkpoint,
+                    gpu_id=args.gpu_id)
 
         # Test the model
         (mu_ll, sigma_ll) = torch_test(model, data_test, setting='generative')

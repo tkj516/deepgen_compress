@@ -53,7 +53,8 @@ def torch_train(
         verbose=True,
         writer=None,
         checkpoint_name=None,
-        continue_checkpoint=None
+        continue_checkpoint=None,
+        gpu_id=0
 ):
     """
     Train a Torch model.
@@ -75,7 +76,7 @@ def torch_train(
     """
     # Get the device to use
     if device is None:
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        device = torch.device(f'cuda:{gpu_id}' if torch.cuda.is_available() else 'cpu')
     print('Train using device: ' + str(device))
 
     # Setup the data loaders
