@@ -21,9 +21,9 @@ class IsingDataset(Dataset):
         # Choose the number of files
         if self.phase == 'train':
             start_idx = 0
-            end_idx = len(0.9*self.files)
+            end_idx = int(0.9*len(self.files))
         else:
-            start_idx = len(0.9*self.files)
+            start_idx = int(0.9*len(self.files))
             end_idx = len(self.files)
 
         self.files = sorted(os.listdir(self.root_dir))[start_idx:end_idx]
