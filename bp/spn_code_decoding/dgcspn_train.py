@@ -155,6 +155,9 @@ if __name__ == '__main__':
     else:    
         checkpoint_name = os.path.join(directory, f'model_{timestamp}.pt')
 
+    # Set the device
+    device = torch.device(f'cuda:{args.gpu_id}' if torch.cuda.is_available() else 'cpu')
+
     # Train the model and collect the results
     if args.discriminative:
         
@@ -169,9 +172,10 @@ if __name__ == '__main__':
                     weight_decay=args.weight_decay,
                     writer=writer,
                     epochs=args.epochs,
-                    continue_checkpoint=args.continue_checkpoint)
+                    continue_checkpoint=args.continue_checkpoint
+                    device=device)
 
-        (nll, accuracy) = torch_test(model, data_test, setting='discriminative')
+        (nll, accuracy) = torch_test(model, data_test, setting='discriminative', device=device)
         
         results[timestamp] = {
             'nll': nll,
@@ -195,10 +199,11 @@ if __name__ == '__main__':
                     epochs=args.epochs,
                     checkpoint_name=checkpoint_name,
                     continue_checkpoint=args.continue_checkpoint,
-                    gpu_id=args.gpu_id)
+                    gpu_id=args.gpu_id,
+                    device=device)
 
         # Test the model
-        (mu_ll, sigma_ll) = torch_test(model, data_test, setting='generative')
+        (mu_ll, sigma_ll) = torch_test(model, data_test, setting='generative', device=device)
 
         # Compute the bits per pixel, if specified
         dims = np.prod(list(in_size))
