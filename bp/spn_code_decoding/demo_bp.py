@@ -145,7 +145,7 @@ class SourceCodeBP():
         self.doperate = doperate
 
         # Store the parity check matrix
-        self.H = torch.FloatTensor(H).to(self.device)
+        self.H = torch.FloatTensor(np.array(H.todense()).astype('float32')).to(self.device)
         self.K, self.N = self.H.shape
 
         # Setup the transforms
@@ -282,7 +282,7 @@ class SourceCodeBPPGM():
         self.doperate = doperate
 
         # Store the parity check matrix
-        self.H = H
+        self.H = torch.FloatTensor(np.array(H.todense()).astype('float32')).to(self.device)
         self.K, self.N = self.H.shape
 
         # Setup the Gibbs sampler
