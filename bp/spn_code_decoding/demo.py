@@ -223,15 +223,17 @@ class Demo():
         results['max_rate'] = max_rate
 
         os.makedirs('temp.json', exist_ok=True)
-        with open(filepath, 'w') as file:
+        with open('temp.json', 'w') as file:
             json.dump(results, file, indent=4)
+
+        print(f'Avg Rate: {avg_rate/100.0}, Min Rate: {min_rate/100.0}, Max Rate: {max_rate/100.0}')
 
         filepath = os.path.join('demo', args.dataset, args.source_type + '_' + args.phase, os.path.basename(args.root_dir).split('.')[0] + '.json')
         os.makedirs(filepath, exist_ok=True)
         with open(filepath, 'w') as file:
             json.dump(results, file, indent=4)
 
-        print(f'Avg Rate: {avg_rate/100.0}, Min Rate: {min_rate/100.0}, Max Rate: {max_rate/100.0}')
+        
 
 def main():
 
