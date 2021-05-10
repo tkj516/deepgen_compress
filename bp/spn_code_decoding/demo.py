@@ -193,7 +193,7 @@ class Demo():
         rates = []
         min_rate = 100
         max_rate = 0
-        for i, sample in tqdm(enumerate(dataloader)):
+        for i, sample in enumerate(tqdm(dataloader)):
             
             x = sample[0]
             rate = self.compute_sample_rate(x)
