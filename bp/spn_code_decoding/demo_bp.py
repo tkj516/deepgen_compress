@@ -46,7 +46,7 @@ class Source():
 
         # Specify the leaf distribution
         leaf_distribution = 'gaussian'
-        if binary:
+        if args.binary:
             leaf_distribution = 'indicator'
 
         # Compute mean quantiles, if specified
