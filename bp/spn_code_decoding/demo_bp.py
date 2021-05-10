@@ -268,7 +268,8 @@ class SourceCodeBPPGM():
                  p=0.5, 
                  stay=0.9,
                  alpha=0.8,
-                 doperate=0.04):
+                 doperate=0.04,
+                 args=None):
 
         # Specify the device
         self.device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
