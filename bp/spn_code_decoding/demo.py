@@ -222,7 +222,11 @@ class Demo():
         results['min_rate'] = min_rate
         results['max_rate'] = max_rate
 
-        filepath = os.path.join('demo', dataset, source_type + '_' + phase, os.path.basename(args.root_dir).split('.')[0] + 'json')
+        os.makedirs('temp.json', exist_ok=True)
+        with open(filepath, 'w') as file:
+            json.dump(results, file, indent=4)
+
+        filepath = os.path.join('demo', args.dataset, args.source_type + '_' + args.phase, os.path.basename(args.root_dir).split('.')[0] + '.json')
         os.makedirs(filepath, exist_ok=True)
         with open(filepath, 'w') as file:
             json.dump(results, file, indent=4)
