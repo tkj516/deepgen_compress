@@ -52,6 +52,7 @@ parser.add_argument('--checkpoint', type=str, required=True, help='Path to check
 parser.add_argument('--dataset', type=str, default='mnist', help='Dataset to use for training')
 parser.add_argument('--root_dir', type=str, default='/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/datasets/ising_28_05_09_75000',
                     help='Dataset root directory')
+parser.add_argument('--num_avg', type=int, default=1000, help='Number of examples to use for averaging')
 parser.add_argument('--phase', type=str, default='test', help='Phase option for Ising dataset')
 parser.add_argument('--source_type', choices=['pgm', 'spn'], required=True, help='The type of source model to use')
 # DGC-SPN arguments
@@ -193,15 +194,25 @@ class Demo():
         rates = []
         min_rate = 100
         max_rate = 0
-        for sample, _ in tqdm(dataloader, position=0, leave=True):
-            
-            x = sample
-            rate = self.compute_sample_rate(x)
 
-            # Perform rate logging on the dataset
-            rates.append(rate)
-            min_rate = min(min_rate, rates[-1])
-            max_rate = max(max_rate, rates[-1])
+        if args.num_avg == -1:
+            args.num_avg = len(self.dataset)
+
+        with tqdm(total=args.num_avg) as pbar:
+            for sample, _ in dataloader:
+                
+                x = sample
+                rate = self.compute_sample_rate(x)
+
+                # Perform rate logging on the dataset
+                rates.append(rate)
+                min_rate = min(min_rate, rates[-1])
+                max_rate = max(max_rate, rates[-1])
+
+                pbar.update(1)
+
+                if len(rates) == args.num_avg:
+                    break
 
         # Log into files here
         results = {}
