@@ -199,7 +199,7 @@ class Demo():
             rate = self.compute_sample_rate(x)
 
             # Perform rate logging on the dataset
-            rates[i] = rate
+            rates.append(rate)
             min_rate = min(min_rate, rates[i])
             max_rate = max(max_rate, rates[i])
 

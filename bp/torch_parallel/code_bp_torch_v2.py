@@ -36,7 +36,7 @@ class CodeBP(nn.Module):
 
     def build_adjacency_list(self):
 
-        print("[Building adjacency list ...]")
+        # print("[Building adjacency list ...]")
 
         # Intialize the lists
         self.neighbors_of_factor = [[self.N] for _ in range(self.K)]
