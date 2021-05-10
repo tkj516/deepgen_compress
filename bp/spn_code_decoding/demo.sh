@@ -21,7 +21,7 @@ checkpoint_070="dgcspn/ising_0.5_{0.70}_200000/generative/model_2021-05-06_19:39
 # Ising
 
 # 0.95
-python demo.py --binary --depthwise --dataset ising --root_dir "$ising_095" --phase test --source_type pgm --stay 0.95 --num_avg $1
+# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_095" --phase test --source_type pgm --stay 0.95 --num_avg $1
 python demo.py --binary --depthwise --dataset ising --root_dir "$ising_095" --phase test --source_type spn --checkpoint "$checkpoint_095" --num_avg $1
 
 # 0.90
