@@ -48,7 +48,7 @@ parser.add_argument('--rate', type=float, default=0.5, help='Compression rate')
 parser.add_argument('--console_display', action='store_true', default=False, help="Visualize results in matplotlib")
 parser.add_argument('--num_experiments', type=int, default=1, help="Number of bp experiments")
 parser.add_argument('--binary', action='store_true', help='Use binary model and binarize dataset')
-parser.add_argument('--checkpoint', type=str, required=True, help='Path to checkpoint file')
+parser.add_argument('--checkpoint', type=str, default=None, help='Path to checkpoint file')
 parser.add_argument('--dataset', type=str, default='mnist', help='Dataset to use for training')
 parser.add_argument('--root_dir', type=str, default='/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/datasets/ising_28_05_09_75000',
                     help='Dataset root directory')
@@ -118,7 +118,7 @@ class Demo():
         self.source_type = args.source_type
 
         # Only needed if PGM source
-        self.stay = None
+        self.stay = args.stay
         if self.source_type == 'pgm':
             assert(self.stay is not None)
 
