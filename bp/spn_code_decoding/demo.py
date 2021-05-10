@@ -193,15 +193,15 @@ class Demo():
         rates = []
         min_rate = 100
         max_rate = 0
-        for i, sample in enumerate(tqdm(dataloader, position=0, leave=True)):
+        for sample, _ in tqdm(dataloader, position=0, leave=True):
             
-            x = sample[0]
+            x = sample
             rate = self.compute_sample_rate(x)
 
             # Perform rate logging on the dataset
             rates.append(rate)
-            min_rate = min(min_rate, rates[i])
-            max_rate = max(max_rate, rates[i])
+            min_rate = min(min_rate, rates[-1])
+            max_rate = max(max_rate, rates[-1])
 
         # Log into files here
         results = {}
