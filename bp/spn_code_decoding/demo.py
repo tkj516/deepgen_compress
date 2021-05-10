@@ -205,7 +205,9 @@ class Demo():
 
         # Log into files here
         results = {}
+        avg_rate = np.average(rates)
         results['rates'] = rates
+        results['avg_rate'] = avg_rate
         results['min_rate'] = min_rate
         results['max_rate'] = max_rate
 
@@ -213,6 +215,8 @@ class Demo():
         os.makedirs(filepath, exist_ok=True)
         with open(filepath, 'w') as file:
             json.dump(results, file, indent=4)
+
+        print(f'Avg Rate: {avg_rate/100.0}, Min Rate: {min_rate/100.0}, Max Rate: {max_rate/100.0}')
 
 def main():
 
