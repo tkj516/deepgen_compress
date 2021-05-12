@@ -28,7 +28,7 @@ ising_055="/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/ising_0.5_{0.55}_2
 checkpoint_055="dgcspn/ising_0.5_{0.55}_200000/generative/model_2021-05-11_09:54:01.pt"
 
 ising_050="/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/ising_0.5_{0.50}_200000"
-# checkpoint_050="dgcspn/ising_0.5_{0.50}_200000/generative/model_2021-05-11_03:08:07.pt"
+checkpoint_050="dgcspn/ising_0.5_{0.50}_200000/generative/model_2021-05-11_12:57:06.pt"
 
 # Ising
 
@@ -56,21 +56,21 @@ ising_050="/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/ising_0.5_{0.50}_2
 # python demo.py --binary --depthwise --dataset ising --root_dir "$ising_070" --phase test --source_type pgm --stay 0.70 --num_avg $1
 # python demo.py --binary --depthwise --dataset ising --root_dir "$ising_070" --phase test --source_type spn --checkpoint "$checkpoint_070" --num_avg $1
 
-# 0.65
-python demo.py --binary --depthwise --dataset ising --root_dir "$ising_065" --phase test --source_type pgm --stay 0.65 --num_avg $1
-python demo.py --binary --depthwise --dataset ising --root_dir "$ising_065" --phase test --source_type spn --checkpoint "$checkpoint_065" --num_avg $1
+# # 0.65
+# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_065" --phase test --source_type pgm --stay 0.65 --num_avg $1
+# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_065" --phase test --source_type spn --checkpoint "$checkpoint_065" --num_avg $1
 
-# 0.60
-python demo.py --binary --depthwise --dataset ising --root_dir "$ising_060" --phase test --source_type pgm --stay 0.60 --num_avg $1
-python demo.py --binary --depthwise --dataset ising --root_dir "$ising_060" --phase test --source_type spn --checkpoint "$checkpoint_060" --num_avg $1
+# # 0.60
+# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_060" --phase test --source_type pgm --stay 0.60 --num_avg $1
+# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_060" --phase test --source_type spn --checkpoint "$checkpoint_060" --num_avg $1
 
-# 0.55
-python demo.py --binary --depthwise --dataset ising --root_dir "$ising_055" --phase test --source_type pgm --stay 0.55 --num_avg $1
+# # 0.55
+# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_055" --phase test --source_type pgm --stay 0.55 --num_avg $1
 python demo.py --binary --depthwise --dataset ising --root_dir "$ising_055" --phase test --source_type spn --checkpoint "$checkpoint_055" --num_avg $1
 
 # 0.50
-python demo.py --binary --depthwise --dataset ising --root_dir "$ising_050" --phase test --source_type pgm --stay 0.50 --num_avg $1
-# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_050" --phase test --source_type spn --checkpoint "$checkpoint_050" --num_avg $1
+# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_050" --phase test --source_type pgm --stay 0.50 --num_avg $1
+python demo.py --binary --depthwise --dataset ising --root_dir "$ising_050" --phase test --source_type spn --checkpoint "$checkpoint_050" --num_avg $1
 
 # MNIST
 # python demo.py --binary --depthwise --dataset mnist --root_dir ../../../MNIST --phase test --source_type spn --checkpoint dgcspn/mnist/generative/model_2021-05-06_11:46:44.pt --num_avg $1
