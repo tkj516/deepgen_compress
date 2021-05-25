@@ -42,7 +42,7 @@ class SpatialIndicatorLayer(torch.nn.Module):
         # Compute the one-hot (indicator) distribution: 0 where 1 and -inf where 0
         indicators = torch.where(torch.isnan(x), self.zero, x)
         indicators = torch.log(F.one_hot(indicators.long(), num_classes=self.out_channels).float())
-        indicators = indicators.squeeze(1).permute(0, 3, 1, 2) # b, 2, h, w
+        indicators = indicators.squeeze(1).permute(0, 2, 1) # b, num_classes, l
 
         # Replace nan values in x with 0 and others with 1 - marginalization
         indicators.masked_fill_(torch.isnan(x), 0.0)
