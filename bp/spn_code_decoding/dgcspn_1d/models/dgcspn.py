@@ -265,4 +265,4 @@ if __name__ == "__main__":
                  leaf_distribution='indicator'
                  )
 
-    summary(dgcspn, (2, 1, 10))
+    summary(dgcspn, (2, 1, 4))
