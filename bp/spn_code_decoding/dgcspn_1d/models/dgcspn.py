@@ -248,7 +248,7 @@ if __name__ == "__main__":
     from torchinfo import summary
 
     dgcspn = DgcSpn(
-                 in_size=(1, 10),
+                 in_size=(1, 4),
                  dequantize=False,
                  logit=None,
                  out_classes=1,
