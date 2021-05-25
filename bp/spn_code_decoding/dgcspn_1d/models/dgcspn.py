@@ -6,7 +6,7 @@ import torch
 import numpy as np
 
 from spnflow.torch.models.abstract import AbstractModel
-from layers.dgcspn import SpatialGaussianLayer, SpatialProductLayer, SpatialSumLayer, SpatialRootLayer
+from layers.dgcspn import SpatialIndicatorLayer, SpatialGaussianLayer, SpatialProductLayer, SpatialSumLayer, SpatialRootLayer
 from spnflow.torch.constraints import ScaleClipper
 
 
