@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import torch.nn.functional as F
 
 class SpatialIndicatorLayer(torch.nn.Module):
     """Spatial Indicator input layer."""
