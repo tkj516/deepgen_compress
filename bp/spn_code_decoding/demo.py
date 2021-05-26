@@ -160,7 +160,7 @@ class Demo():
             
         # Compute the lowest rate using divide and conquer
         low_rate = 1
-        high_rate = 99
+        high_rate = 150
 
         while low_rate < high_rate:
 
@@ -192,7 +192,7 @@ class Demo():
 
         # Loop through all the images in the dataset log its rate
         rates = []
-        min_rate = 100
+        min_rate = 150
         max_rate = 0
 
         if args.num_avg == -1:
