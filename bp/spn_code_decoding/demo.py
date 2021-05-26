@@ -127,7 +127,7 @@ class Demo():
     def generate_LDPC_matrices(self):
         print('[Generating and caching LDPC matrices ...]')
         self.H = {}
-        for i in tqdm(range(1, 100)):
+        for i in tqdm(range(1, 151)):
             rate = i/100.0
             self.H[i] = pyldpc_generate.generate(int(rate*self.h*self.w), self.h*self.w, 3.0, 2, 123)
 
