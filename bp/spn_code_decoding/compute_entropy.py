@@ -157,7 +157,7 @@ if __name__ == "__main__":
     sep_threshold_spn = compute_sep_threshold(sep_prot_spn)
 
     # Interpolate the values for plotting
-    q_interp = np.arange(0.50, 0.02, 0.95)
+    q_interp = np.arange(0.50, 0.95, 0.02)
     sep_prot_pgm_interp = interpolate.interp1d(q, sep_prot_pgm)(q_interp)
     sep_prot_spn_interp = interpolate.interp1d(q, sep_prot_spn)(q_interp)
     sep_threshold_pgm_interp = interpolate.interp1d(q, sep_threshold_pgm)(q_interp)
