@@ -21,7 +21,7 @@ def ising_entropy(stays=None):
     thetas_left = thetas - 0.001
     thetas_right = thetas + 0.001
 
-    for i in range(len(thetas)):
+    for i in tqdm(range(len(thetas))):
         t = np.tanh(thetas_left[i])
         logZN_left.append(logZN_inf_lattice(t))
         t = np.tanh(thetas_right[i])
@@ -61,7 +61,7 @@ def finite_entropy(stays, N=100):
     dlogZN_dtheta = f(newthetas)
     
     logZN = []
-    for theta in newthetas:
+    for theta in tqdm(newthetas):
         integral, _ = integrate.quad(f, 0, theta)
         logZN.append(integral)
 
@@ -166,10 +166,10 @@ if __name__ == "__main__":
     fig, ax = plt.subplots()
     ax.plot(stays, hs, 'k-', label='$H_\infty$')
     ax.plot(newstays, hf, 'g-', label='$H_{h, w}$')
-    ax.plot(q, sep_prot_pgm_interp, '+--', label='sep-prot PGM')
-    ax.plot(q, sep_prot_spn_interp, 'x--', label='sep-prot SPN')
-    ax.plot(q, sep_threshold_pgm_interp, 'o-', label='sep-thresh PGM')
-    ax.plot(q, sep_threshold_spn_interp, '^-', label='sep-thresh SPN')
+    ax.plot(q_interp, sep_prot_pgm_interp, '+--', label='sep-prot PGM')
+    ax.plot(q_interp, sep_prot_spn_interp, 'x--', label='sep-prot SPN')
+    ax.plot(q_interp, sep_threshold_pgm_interp, 'o-', label='sep-thresh PGM')
+    ax.plot(q_interp, sep_threshold_spn_interp, '^-', label='sep-thresh SPN')
     ax.set_ylabel('output bits per input bits')
     ax.set_xlabel('q')
     ax.legend()
