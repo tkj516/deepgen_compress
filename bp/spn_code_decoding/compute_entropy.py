@@ -5,6 +5,7 @@ import numpy as np
 from scipy import integrate, interpolate
 from torch_parallel.grid_gibbs import GibbsSampler
 import matplotlib.pyplot as plt
+from ldpc_generate import pyldpc_generate
 
 def ising_entropy(stays=None):
 
@@ -101,25 +102,66 @@ def count_edges(stays, N=100):
 
     return SE, DE, Ns, y
 
+def compute_sep_threshold(sep_prot, doperate=0.04):
+
+    # Get the base decoding rate by subtracting doping rate
+    base_rates = np.array(sep_prot) - doperate
+
+    sep_threshold = []
+
+    x = np.arange(0, 1, 0.01)
+
+    for i in range(len(base_rates)):
+
+        r = base_rates[i]
+
+        # Create LDPC matrix for this rate and compute
+        # mean row sum (rho_bar)
+        lambda_bar = 3
+        H = pyldpc_generate.generate(int(r*784), 784, 3.0, 2, 123)
+        k, n = H.shape[0], H.shape[1]
+        rho_bar = H.sum(-1).mean()
+
+        # Implement degree polynomial as shown in Ex 5.2 in YZ Thesis
+        # TODO: Add derivation to notes
+        frac = rho_bar - int(rho_bar)
+        P_prime = lambda x: int(rho_bar)*(k - int(k*frac))*x**(int(rho_bar) - 1) + (int(rho_bar)+1)*int(k*frac)*x**int(rho_bar)
+        f = lambda eps, x: eps*(1 - (P_prime(1-x)/P_prime(1.0)))**2
+
+        maximum = 1.0
+        eps = r
+        
+        while maximum >= 0:
+
+            eps -= 0.005
+            maximum = np.max(f(eps, x) - x)
+
+        sep_threshold.append(eps)
+
+    return sep_threshold
+
 if __name__ == "__main__":
 
-    hs, stays = ising_entropy()
+    # hs, stays = ising_entropy()
 
-    hf, newstays = finite_entropy(np.arange(0.5, 1.0, 0.04), N=50)
+    # hf, newstays = finite_entropy(np.arange(0.5, 1.0, 0.04), N=50)
 
     q = [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95]
 
-    pgm = [1.04, 1.04, 1.04, 1.01186, 0.71966, 0.33407, 0.20538, 0.16562, 0.1470, 0.14261]
-    spn = [1.04, 1.04, 1.04, 1.02601, 0.74532, 0.34625, 0.22401, 0.17977, 0.16053, 0.15176]
+    pgm = [1.19649, 1.18292, 1.14193, 1.03935, 0.71966, 0.33407, 0.20538, 0.16562, 0.1470, 0.14261]
+    spn = [1.19490, 1.18673, 1.14894, 1.06529, 0.74532, 0.34625, 0.22401, 0.17977, 0.16053, 0.15176]
 
-    fig, ax = plt.subplots()
-    ax.plot(stays, hs, 'o-', label='H_inf')
-    ax.plot(newstays, hf, '^-', label='H_f')
-    ax.plot(q, pgm, '+-', label='pgm')
-    ax.plot(q, spn, 'x-', label='spn')
-    ax.set_ylabel('output bits per input bits')
-    ax.set_xlabel('q')
-    ax.legend()
+    # fig, ax = plt.subplots()
+    # ax.plot(stays, hs, 'b-', label='H_inf')
+    # ax.plot(newstays, hf, 'r-', label='H_f')
+    # ax.plot(q, pgm, '+-', label='pgm')
+    # ax.plot(q, spn, 'x-', label='spn')
+    # ax.set_ylabel('output bits per input bits')
+    # ax.set_xlabel('q')
+    # ax.legend()
 
-    plt.grid()
-    plt.show()
+    # plt.grid()
+    # plt.show()
+
+    sep_threshold_pgm = compute_sep_threshold(pgm)
+    print(sep_threshold_pgm)
