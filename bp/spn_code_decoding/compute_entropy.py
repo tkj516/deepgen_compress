@@ -6,6 +6,7 @@ from scipy import integrate, interpolate
 from torch_parallel.grid_gibbs import GibbsSampler
 import matplotlib.pyplot as plt
 from ldpc_generate import pyldpc_generate
+from tqdm import tqdm
 
 def ising_entropy(stays=None):
 
@@ -111,7 +112,7 @@ def compute_sep_threshold(sep_prot, doperate=0.04):
 
     x = np.arange(0, 1, 0.01)
 
-    for i in range(len(base_rates)):
+    for i in tqdm(range(len(base_rates))):
 
         r = base_rates[i]
 
@@ -132,6 +133,8 @@ def compute_sep_threshold(sep_prot, doperate=0.04):
         eps = r
         
         while maximum >= 0:
+
+            print(maximum)
 
             eps -= 0.005
             maximum = np.max(f(eps, x) - x)
