@@ -110,7 +110,7 @@ def compute_sep_threshold(sep_prot, doperate=0.04):
 
     sep_threshold = []
 
-    x = np.arange(0, 1, 0.01)
+    x = np.arange(0.01, 1, 0.01)
 
     for i in tqdm(range(len(base_rates))):
 
