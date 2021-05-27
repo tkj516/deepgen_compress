@@ -137,7 +137,8 @@ def compute_sep_threshold(sep_prot, doperate=0.04):
             eps -= 0.005
             maximum = np.max(f(eps, x) - x)
 
-        sep_threshold.append(eps)
+        # Add doping back when appending
+        sep_threshold.append(eps + doperate)
 
     return sep_threshold
 
