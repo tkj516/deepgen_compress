@@ -15,7 +15,7 @@ def ising_entropy(stays=None):
     logZN = []
 
     if stays is None:
-        stays = np.arange(0.5, 0.98, 0.02)
+        stays = np.arange(0.5, 0.95, 0.02)
     thetas = np.arctanh(2 * (stays - 0.5))
 
     thetas_left = thetas - 0.001
@@ -157,8 +157,8 @@ if __name__ == "__main__":
     sep_threshold_spn = compute_sep_threshold(sep_prot_spn)
 
     fig, ax = plt.subplots()
-    ax.plot(stays, hs, 'b-', label='$H_\infty$')
-    ax.plot(newstays, hf, 'r-', label='$H_{h, w}$')
+    ax.plot(stays, hs, 'k-', label='$H_\infty$')
+    ax.plot(newstays, hf, 'g-', label='$H_{h, w}$')
     ax.plot(q, sep_prot_pgm, '+-', label='sep-prot PGM')
     ax.plot(q, sep_prot_spn, 'x-', label='sep-prot SPN')
     ax.plot(q, sep_threshold_pgm, 'o-', label='sep-thresh PGM')
