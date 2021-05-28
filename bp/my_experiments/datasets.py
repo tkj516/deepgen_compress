@@ -55,13 +55,12 @@ def load_binary_dataset(root, name):
     return data_train, data_valid, data_test
 
 class UCIDNADataset(Dataset):
-    """Dataset of Gibbs sampled Ising images"""
+    """Dataset of binarized UCI DNA sequences"""
 
     def __init__(self, 
                 root='/fs/data/tejasj/Masters_Thesis/spnflow/datasets',
                 name='dna',
-                phase='train', 
-                transform=None):
+                phase='train'):
 
         # Choose the phase
         self.phase = phase
@@ -69,27 +68,19 @@ class UCIDNADataset(Dataset):
         # Get the train, val and test datasets
         data_train, data_valid, data_test = load_binary_dataset(root, name)
 
-        print(data_train.shape)
-        exit(0)
-
         # Choose the number of files
         if self.phase == 'train':
-            start_idx = 0
-            end_idx = int(0.9*len(self.files))
+            self.files = data_train
+        elif self.phase == 'val':
+            self.files = data_valid
         else:
-            start_idx = int(0.9*len(self.files))
-            end_idx = len(self.files)
-
-        self.files = sorted(os.listdir(self.root_dir))[start_idx:end_idx]
+            self.files = data_test
 
     def __len__(self):
-        return len(self.files)
+        return self.files.shape[0]
 
     def __getitem__(self, idx):
 
-        image = os.path.join(self.root_dir, self.files[idx])
-        image = np.load(image)
-
-        sample = torch.FloatTensor(image).unsqueeze(0)
+        sample = torch.FloatTensor(self.files[idx:idx+1])
 
         return sample, torch.tensor([0])

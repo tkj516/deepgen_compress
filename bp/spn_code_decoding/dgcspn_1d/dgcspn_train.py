@@ -65,28 +65,10 @@ if __name__ == '__main__':
         'Only one between --quantiles-loc and --uniform-loc can be defined'
 
     if args.dataset == 'uci-dna':
-        in_size = (1, 360)
+        in_size = (1, 180)
         data_train = UCIDNADataset(phase='train')
-    elif args.dataset == 'mnist':
-        # Load the MNIST dataset
-        in_size = (1, 28, 28)
-        transform = torchvision.transforms.Compose([
-                        torchvision.transforms.ToTensor(),
-                        Reshape(in_size),
-                        lambda x: (x > 0.5).float() if args.binary else x
-                    ])
-        data_train = torchvision.datasets.MNIST('../../../MNIST', train=True, transform=transform, download=True)
-        data_test = torchvision.datasets.MNIST('../../../MNIST', train=False, transform=transform, download=True)
-        n_val = int(0.1 * len(data_train))
-        n_train = len(data_train) - n_val
-        data_train, data_val = torch.utils.data.random_split(data_train, [n_train, n_val])
-    elif args.dataset == 'ising':
-        in_size = (1, 28, 28)
-        data_train = IsingDataset(root_dir=args.root_dir, phase='train')
-        data_test = IsingDataset(root_dir=args.root_dir, phase='test')
-        n_val = int(0.1 * len(data_train))
-        n_train = len(data_train) - n_val
-        data_train, data_val = torch.utils.data.random_split(data_train, [n_train, n_val])
+        data_val = UCIDNADataset(phase='val')
+        data_test = UCIDNADataset(phase='test')
     else:
         NotImplementedError(f'Model is not yet supported for {args.dataset}')
 
