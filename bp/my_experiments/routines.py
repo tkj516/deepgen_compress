@@ -162,9 +162,7 @@ def torch_train_generative(model, train_loader, val_loader, optimizer, epochs, p
 
             # Log the inputs in tensorboard
             if log_inputs:
-                print(inputs.shape)
-                if len(inputs.shape) > 3:
-                    writer.add_image('input_images', torchvision.utils.make_grid(inputs), epoch)
+                writer.add_image('input_images', torchvision.utils.make_grid(inputs), epoch)
                 log_inputs = False
 
         # Initialize the tqdm validation data loader, if verbose is specified
