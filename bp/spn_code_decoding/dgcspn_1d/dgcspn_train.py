@@ -47,7 +47,7 @@ if __name__ == '__main__':
     parser.add_argument('--sum-dropout', type=float, default=None, help='The sum layer dropout to use.')
     parser.add_argument('--learning-rate', type=float, default=1e-3, help='The learning rate.')
     parser.add_argument('--batch-size', type=int, default=128, help='The batch size.')
-    parser.add_argument('--epochs', type=int, default=1000, help='The number of epochs.')
+    parser.add_argument('--epochs', type=int, default=100, help='The number of epochs.')
     parser.add_argument('--patience', type=int, default=30, help='The epochs patience used for early stopping.')
     parser.add_argument('--weight-decay', type=float, default=0.0, help='L2 regularization factor.')
     parser.add_argument('--binary', action='store_true', default=False, help='Use binary model and binarize dataset')
@@ -65,7 +65,7 @@ if __name__ == '__main__':
         'Only one between --quantiles-loc and --uniform-loc can be defined'
 
     if args.dataset == 'uci-dna':
-        in_size = (1, 260)
+        in_size = (1, 360)
         data_train = UCIDNADataset(phase='train')
     elif args.dataset == 'mnist':
         # Load the MNIST dataset
