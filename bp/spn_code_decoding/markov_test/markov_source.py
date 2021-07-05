@@ -26,7 +26,8 @@ class MarkovSource():
         # Length of the signal
         self.N = N
         # Number of bits per alphabet
-        self.bits = np.log2(M)
+        self.M = M
+        self.bits = np.log2(self.M)
         # Total number of bits
         self.Nbits = self.N * self.bits
 
@@ -39,6 +40,9 @@ class MarkovSource():
             self.epot,
             self.sta
         ) = generate_transition_matrix(self.M, self.hf)
+
+        # Set the node potentials
+        self.npot = np.ones((1, self.N, self.M)) / self.M
 
     def sample(self):
         """Generate a sample from the Markov chain.

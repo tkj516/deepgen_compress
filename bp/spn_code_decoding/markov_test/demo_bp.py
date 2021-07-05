@@ -29,7 +29,8 @@ from spnflow.utils.data import compute_mean_quantiles
 from my_experiments.datasets import IsingDataset
 from ldpc_generate import pyldpc_generate
 
-from .utils import generate_sample
+from .utils import *
+from .markov_source import *
 
 from tensorboardX import SummaryWriter
 
@@ -266,12 +267,12 @@ class SourceCodeBPPGM():
 
     def __init__(self,
                  H,
-                 h=28,
-                 w=28,
-                 p=0.5, 
-                 stay=0.9,
-                 alpha=0.8,
+                 h=1,
+                 w=1000,
+                 alpha=0.9,
                  doperate=0.04,
+                 M=256,
+                 hf=0.01,
                  args=None):
 
         # Specify the device
@@ -280,20 +281,31 @@ class SourceCodeBPPGM():
         # Store the parameters
         self.h = h
         self.w = w
-        self.p = p
-        self.stay = stay
         self.alpha = alpha
         self.doperate = doperate
+        self.M = M
+        
+        # Number of bits per alphabet
+        self.bits = int(np.log2(self.M))
 
         # Store the parity check matrix
         self.H = torch.FloatTensor(np.array(H.todense()).astype('float32')).to(self.device)
         self.K, self.N = self.H.shape
 
-        # Setup the Gibbs sampler
-        self.sampler = GibbsSampler(self.h, self.w, self.p, self.stay)
+        # Setup the Markov Source
+        self.markov = MarkovSource(
+            N=self.w,
+            M=self.M,
+            hf=self.hf,
+        )
 
         # Setup the source graph
-        self.source = GridBP(self.h, self.w, self.p, self.stay, self.alpha, self.device).to(self.device)
+        self.source = MarkovSourceBP(
+            npot=self.markov.npot,
+            epot=self.markov.epot,
+            alpha=self.alpha,
+            device=self.device,
+        ).to(self.device)
 
         # Setup the code graph
         self.code = CodeBP(self.H, self.device).to(self.device)
@@ -301,10 +313,11 @@ class SourceCodeBPPGM():
         # Store a matrix for doping probabilities
         self.ps = torch.FloatTensor(np.tile(np.array([1-p, p]), (h*w, 1))).to(self.device)
 
-        # Input image
+        # Input samples
         self.samp = None
+        self.graycoded_samp = None
 
-        # Encoded image
+        # Encoded sample
         self.x = None
 
         # Initialize the messages
@@ -321,7 +334,12 @@ class SourceCodeBPPGM():
 
     def generate_sample(self):
 
-        self.samp = generate
+        self.samp, self.graycoded_samp = generate_sample(
+                                            self.markov.epot,
+                                            self.markov.sta,
+                                            self.N,
+                                            self.bits,
+                                        )
         self.samp = torch.FloatTensor(self.sampler.samp.reshape(-1, 1)).to(self.device)
 
     def set_sample(self, x):
