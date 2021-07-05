@@ -284,6 +284,7 @@ class SourceCodeBPPGM():
         self.alpha = alpha
         self.doperate = doperate
         self.M = M
+        self.hf = hf
         
         # Number of bits per alphabet
         self.bits = int(np.log2(self.M))
@@ -311,7 +312,8 @@ class SourceCodeBPPGM():
         self.code = CodeBP(self.H, self.device).to(self.device)
 
         # Store a matrix for doping probabilities
-        self.ps = torch.FloatTensor(np.tile(np.array([1-p, p]), (h*w, 1))).to(self.device)
+        self.npot = torch.FloatTensor(self.markov.npot).to(self.device)
+        self.ps = None
 
         # Input samples
         self.samp = None
@@ -328,9 +330,11 @@ class SourceCodeBPPGM():
     def doping(self):
 
         indices = np.random.choice(self.N, size=int(self.N*self.doperate), replace=False)
-        self.ps[indices, 0], self.ps[indices, 1] = (self.samp[indices, 0] == 0).float(), (self.samp[indices, 0] == 1).float()
+        self.npot[:, indices, :] = 0.0
+        self.npot[:, indices, self.samp[indices]] = 1.0
         # Update the node potential after doping
-        self.source.npot.data = self.ps.reshape(self.h, self.w, 2)
+        self.source.npot.data = self.npot
+        self.ps = msg_int_to_graycode(self.npot)
 
     def generate_sample(self):
 
@@ -345,11 +349,12 @@ class SourceCodeBPPGM():
     def set_sample(self, x):
         
         self.samp = x
-        self.samp = torch.FloatTensor(self.samp.reshape(-1, 1)).to(self.device)
+        self.samp = torch.FloatTensor(self.samp).to(self.device)
+        self.graycoded_samp = convert_to_graycode(x, bits=self.bits)
 
     def encode(self):
 
-        self.x = (self.H @ self.samp) % 2
+        self.x = (self.H @ self.graycoded_samp) % 2
 
     def decode_step(self):
 
@@ -357,18 +362,23 @@ class SourceCodeBPPGM():
         self.code(self.ps, self.x, self.M_to_code)
         self.M_from_code = self.code.M_out
         # Reshape to send to grid
-        self.M_to_grid = self.M_from_code.reshape(self.h, self.w, 2)
+        self.M_to_grid = msg_graycode_to_int(
+            M_in=self.M_from_code,
+            height=self.h,
+            width=self.w,
+            bits=self.bits,
+        )
 
         # Perform one step of source graph belief propagation
         self.source(self.M_to_grid)
         self.M_from_grid = self.source.Mout
         # Reshape to send to code
-        self.M_to_code = self.M_from_grid.reshape(self.N, 2)
+        self.M_to_code = msg_int_to_graycode(self.M_from_grid)
 
     def decode(self, num_iter=1):
 
         # Set the initial beliefs to all nans
-        B_old = torch.tensor(float('nan') * np.ones((self.h, self.w))).to(self.device)
+        max_ll_old = torch.tensor(float('nan') * np.ones((self.h, self.w))).to(self.device)
 
         # Perform multiple iterations of belief propagation
         for i in range(num_iter):
@@ -378,14 +388,16 @@ class SourceCodeBPPGM():
 
             # Calculate the belief
             self.B = self.M_from_grid * self.M_to_grid * self.source.npot
-            self.B /= torch.sum(self.B, -1).unsqueeze(-1)
+            self.B /= torch.sum(self.B, -1, keepdims=True)
+            self.max_ll = torch.argmax(self.B, -1)
 
             # Termination condition to end belief propagation
-            if torch.sum(torch.abs(self.B[..., 1] - B_old)).item() < 0.5:
+            if torch.sum(torch.abs(self.max_ll - max_ll_old)).item() < 0.5:
                 break
-            B_old = self.B[..., 1]
+            max_ll_old = self.max_ll
 
             # Compute the number of errors and print some information
-            errs = torch.sum(torch.abs((self.B[..., 1] > 0.5).float() - self.samp.reshape(self.h, self.w))).item()
+            errs = torch.sum(torch.abs(self.max_ll - self.samp.reshape(self.h, self.w))).item()
+            devs = torch.sum(1 - (self.max_ll == self.samp.reshape(self.h, self.w).float())).item()
 
-        return int(errs)
+        return int(errs), int(devs)

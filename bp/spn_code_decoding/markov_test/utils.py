@@ -17,6 +17,15 @@ def bitget(x, i):
     return x >> i & 1
 
 def bin_to_gray(x, bits=8):
+    """Convert integer to graycode.
+
+    Args:
+        x (int): Integer
+        bits (int, optional): Number of bits per alphabet. Defaults to 8.
+
+    Returns:
+        str: Graycode in string format.
+    """
 
     out = x >> 1 ^ x
     out = bin(out).split('b')[-1].zfill(bits)
@@ -34,10 +43,18 @@ def gray_to_bin(x):
     return out
 
 def convert_to_graycode(s, bits=8):
+    """Convert integer samples to graycode.
+
+    Args:
+        s (np.ndarray): Integer samples.
+        bits (int, optional): Number of bits per alphabet. Defaults to 8.
+
+    Returns:
+        np.ndarray: Graycoded samples
+    """
     
-    in_size = s.shape
     out = ''.join([bin_to_gray(sample) for sample in s.flatten()])
-    out = np.array([float(sample) for sample in out]).reshape(in_size)
+    out = np.array([float(sample) for sample in out]).reshape(-1, 1)
 
     return out
 
@@ -143,7 +160,7 @@ def generate_sample(
         s.append(
             find(
                 np.random.rand() < np.cumsum(epot[:, s[-1]])
-                ) - 1
+            ) - 1
         )
     s = s.reshape(-1, 1)
 
