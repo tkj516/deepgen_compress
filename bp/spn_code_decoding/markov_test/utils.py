@@ -1,5 +1,4 @@
 import torch
-from _typeshed import OpenTextMode
 import numpy as np
 from scipy.linalg.decomp import eig
 from scipy.stats import norm
@@ -78,6 +77,7 @@ def entropy(p):
     except Exception as e:
         print(e)
 
+# All unit tests pass
 def stochastic_matrix_entropy(
     bleed,
     M,
@@ -88,6 +88,7 @@ def stochastic_matrix_entropy(
     epot * state_dist = new_state_dist
     """
 
+    print(bleed)
     if bleed <= 0:
         return 0
 
@@ -99,13 +100,14 @@ def stochastic_matrix_entropy(
     epot /= np.sum(epot, axis=0, keepdims=True)
 
     # Find stationary distribution
-    sta, d = eig(epot)
+    d, sta = eig(epot)
     ind = np.argmax(d)
     sta = sta[:, ind].reshape(-1, 1) / np.sum(sta[:, ind])
 
     # Compute entropy
     hcond = [entropy(epot[:, i]) for i in range(M)]
     h = hcond @ sta / np.log2(M)
+    h = h[0].real
 
     return h
 
@@ -114,7 +116,7 @@ def generate_transition_matrix(
     hf=0.01,
 ):
 
-    bleed_src = fsolve(lambda x: stochastic_matrix_entropy(x, M) - hf, M / 2)
+    bleed_src = fsolve(lambda x: np.array([stochastic_matrix_entropy(x_i, M) - hf for x_i in x]), M / 2)
     # Start with a transition matrix
     prow = (norm.cdf(np.arange(0.5, M - 1 + 0.5 + 1), loc=0, scale=bleed_src)
                 - norm.cdf(np.arange(-0.5, M - 1 - 0.5 + 1), loc=0, scale=bleed_src))
@@ -123,7 +125,7 @@ def generate_transition_matrix(
     epot /= np.sum(epot, axis=0, keepdims=True)
 
     # Find stationary distribution
-    sta, d = eig(epot)
+    d, sta = eig(epot)
     ind = np.argmax(d)
     sta = sta[:, ind].reshape(-1, 1) / np.sum(sta[:, ind])
 

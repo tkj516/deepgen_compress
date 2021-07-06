@@ -29,8 +29,8 @@ from spnflow.utils.data import compute_mean_quantiles
 from my_experiments.datasets import IsingDataset
 from ldpc_generate import pyldpc_generate
 
-from .utils import *
-from .markov_source import *
+from spn_code_decoding.markov_test.utils import *
+from spn_code_decoding.markov_test.markov_source import *
 
 from tensorboardX import SummaryWriter
 
@@ -345,12 +345,13 @@ class SourceCodeBPPGM():
                                             self.bits,
                                         )
         self.samp = torch.FloatTensor(self.sampler.samp.reshape(-1, 1)).to(self.device)
+        self.graycoded_samp = torch.FloatTensor(self.graycoded_samp).to(self.device)
 
     def set_sample(self, x):
         
         self.samp = x
         self.samp = torch.FloatTensor(self.samp).to(self.device)
-        self.graycoded_samp = convert_to_graycode(x, bits=self.bits)
+        self.graycoded_samp = torch.FloatTensor(convert_to_graycode(x, bits=self.bits))
 
     def encode(self):
 
@@ -375,7 +376,7 @@ class SourceCodeBPPGM():
         # Reshape to send to code
         self.M_to_code = msg_int_to_graycode(self.M_from_grid)
 
-    def decode(self, num_iter=1):
+    def decode(self, num_iter=1, verbose=False):
 
         # Set the initial beliefs to all nans
         max_ll_old = torch.tensor(float('nan') * np.ones((self.h, self.w))).to(self.device)
@@ -400,4 +401,44 @@ class SourceCodeBPPGM():
             errs = torch.sum(torch.abs(self.max_ll - self.samp.reshape(self.h, self.w))).item()
             devs = torch.sum(1 - (self.max_ll == self.samp.reshape(self.h, self.w).float())).item()
 
+            if verbose:
+                print(f"Iteration {i} :- Errors = {errs}, Deviations = {devs}")
+
         return int(errs), int(devs)
+
+def test_source_code_bp():
+
+    parser = argparse.ArgumentParser("Test parser for source code BP")
+    parser.add_argument("--device", type=str, default="cuda:0", help="Device to run test")
+    args = parser.parse_args()
+
+    h = 1
+    w = 1000
+    rate = 0.9
+    M = 256
+    bits = int(np.log2(M))
+    N_bits = h * w * bits
+
+    source_code_bp = SourceCodeBPPGM(
+        H=pyldpc_generate.generate(int(rate * N_bits), N_bits, 3.0, 2, 123),
+        h=h,
+        w=w,
+        alpha=0.9,
+        doperate=0.04,
+        M=M,
+        hf=0.01,
+        args=args,
+    )
+
+    # Generate a sample
+    source_code_bp.generate_sample()
+
+    # Encode the sample
+    source_code_bp.encode()
+
+    # Decode the sample
+    _, _ = source_code_bp.decode(num_iter=100, verbose=True)
+
+if __name__ == "__main__":
+
+    test_source_code_bp()
