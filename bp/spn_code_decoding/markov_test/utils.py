@@ -173,13 +173,13 @@ def generate_sample(
     s.append(
         find(
             np.random.rand() < np.cumsum(sta)
-        ) - 1
+        )
     )
     for _ in range(1, N):
         s.append(
             find(
                 np.random.rand() < np.cumsum(epot[:, s[-1]])
-            ) - 1
+            )
         )
     s = np.array(s).reshape(-1, 1)
 

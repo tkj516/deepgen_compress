@@ -290,7 +290,7 @@ class SourceCodeBPPGM():
         self.bits = int(np.log2(self.M))
 
         # Store the parity check matrix
-        self.H = torch.FloatTensor(np.array(H.todense()).astype('float32')).to(self.device)
+        self.H = torch.FloatTensor(np.array(H.todense()).astype('float32')).to(self.device)  # torch.FloatTensor(H).to(self.device)
         self.K, self.N = self.H.shape
 
         # Setup the Markov Source
@@ -330,7 +330,7 @@ class SourceCodeBPPGM():
     def doping(self):
 
         indices = np.random.choice(self.w, size=int(self.w*self.doperate), replace=False)
-        vals = self.samp.cpu().numpy()[indices]
+        vals = self.samp.cpu().numpy()[indices].flatten().astype(int)
         self.npot[:, indices, :] = 0.0
         self.npot[:, indices, vals] = 1.0
         # Update the node potential after doping
@@ -399,7 +399,7 @@ class SourceCodeBPPGM():
             max_ll_old = self.max_ll
 
             # Compute the number of errors and print some information
-            errs = torch.sum(torch.abs(self.max_ll - self.samp.reshape(self.h, self.w))).item()
+            errs = torch.mean(torch.abs(self.max_ll - self.samp.reshape(self.h, self.w))).item()
             devs = torch.sum(1 - (self.max_ll == self.samp.reshape(self.h, self.w)).float()).item()
 
             if verbose:

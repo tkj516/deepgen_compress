@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 from tqdm import tqdm
+from scipy.stats import norm
+from scipy.linalg import toeplitz
 
 from spn_code_decoding.markov_test.utils import *
 
@@ -38,12 +40,18 @@ class MarkovSource():
         # Generate a markov chain
         (
             self.bleed_src,
-            self.epot,
+            _,
             self.sta
         ) = generate_transition_matrix(self.M, self.hf)
 
         # Set the node potentials
         self.npot = np.ones((1, self.N, self.M)) / self.M
+
+        # Set the edge potentials
+        prow = norm.pdf(np.arange(M), 0, self.bleed_src)
+        self.epot = toeplitz(prow)
+        # Normalize the transition matrix
+        self.epot /= np.sum(self.epot, axis=0, keepdims=True)
 
     def sample(self):
         """Generate a sample from the Markov chain.
@@ -140,6 +148,7 @@ class MarkovSourceBP(nn.Module):
         temp  = self.npot[:, 1:, :] * Min[:, 1:, :]
         temp[:, :-1, :] *= self.Ml[:, 1:, :]
         Ml1 = torch.matmul(temp.reshape(-1, self.M), self.epot.permute(1, 0)).reshape(self.h, self.w-1, self.M)
+        # print(Ml1)
 
         # Normalize the messages
         Mr1 /= torch.sum(Mr1, -1, keepdim=True)
