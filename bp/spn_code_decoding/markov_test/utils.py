@@ -32,9 +32,9 @@ def bin_to_gray(x, bits=8):
     """
 
     out = x >> 1 ^ x
-    out = bin(out).split('b')[-1].zfill(bits)[::-1]
+    out_str = bin(out).split('b')[-1].zfill(bits)
 
-    return out
+    return out, out_str
 
 # All unit tests pass
 def gray_to_bin(x):
@@ -67,7 +67,7 @@ def convert_to_graycode(s, bits=8):
         np.ndarray: Graycoded samples
     """
     
-    out = ''.join([bin_to_gray(sample) for sample in s.flatten()])
+    out = ''.join([bin_to_gray(sample)[1][::-1] for sample in s.flatten()])
     out = np.array([float(sample) for sample in out]).reshape(-1, 1)
 
     return out
@@ -213,14 +213,15 @@ def msg_graycode_to_int(
     M = 2 ** bits
 
     # TODO: Figure out a better hack
-    temp = M_in.reshape(bits, height, width, 2, order='F')
+    temp = M_in.reshape(bits, -1, 2, order='F').reshape(bits, height, width, 2)
     M_out = np.ones((height, width, M))
 
     for i in range(bits):
         index_mask = np.array([bitget(a, i) for a in range(M)])
         M_out[..., index_mask == 0] *= np.tile(temp[i, ..., 0], (M // 2, 1, 1)).transpose(1, 2, 0)
         M_out[..., index_mask == 1] *= np.tile(temp[i, ..., 1], (M // 2, 1, 1)).transpose(1, 2, 0)
-    M_out[:, :, [gray_to_bin(i) for i in range(M)]] = M_out
+    # TODO: Numpy copies over arrays weirdly, make a copy
+    M_out[:, :, [gray_to_bin(i) for i in range(M)]] = M_out.copy()
 
     if width == 1:
         M_out = M_out.squeeze()
@@ -247,7 +248,7 @@ def msg_int_to_graycode(
     N = M_in.shape[0]
     M_out = np.zeros((N * bits, 2))
 
-    graycodes = [bin_to_gray(i, bits) for i in range(M)]
+    graycodes = [bin_to_gray(i, bits)[0] for i in range(M)]
 
     for i in range(bits):
         index_mask = np.array([bitget(a, i) for a in graycodes])
