@@ -329,9 +329,10 @@ class SourceCodeBPPGM():
 
     def doping(self):
 
-        indices = np.random.choice(self.N, size=int(self.N*self.doperate), replace=False)
+        indices = np.random.choice(self.w, size=int(self.w*self.doperate), replace=False)
+        vals = self.samp.cpu().numpy()[indices]
         self.npot[:, indices, :] = 0.0
-        self.npot[:, indices, self.samp[indices]] = 1.0
+        self.npot[:, indices, vals] = 1.0
         # Update the node potential after doping
         self.source.npot.data = self.npot
         self.ps = msg_int_to_graycode(self.npot)
@@ -339,12 +340,12 @@ class SourceCodeBPPGM():
     def generate_sample(self):
 
         self.samp, self.graycoded_samp = generate_sample(
-                                            self.markov.epot,
-                                            self.markov.sta,
-                                            self.N,
-                                            self.bits,
+                                            epot=self.markov.epot,
+                                            sta=self.markov.sta,
+                                            N=self.w,
+                                            bits=self.bits,
                                         )
-        self.samp = torch.FloatTensor(self.sampler.samp.reshape(-1, 1)).to(self.device)
+        self.samp = torch.FloatTensor(self.samp.reshape(-1, 1)).to(self.device)
         self.graycoded_samp = torch.FloatTensor(self.graycoded_samp).to(self.device)
 
     def set_sample(self, x):
@@ -399,7 +400,7 @@ class SourceCodeBPPGM():
 
             # Compute the number of errors and print some information
             errs = torch.sum(torch.abs(self.max_ll - self.samp.reshape(self.h, self.w))).item()
-            devs = torch.sum(1 - (self.max_ll == self.samp.reshape(self.h, self.w).float())).item()
+            devs = torch.sum(1 - (self.max_ll == self.samp.reshape(self.h, self.w)).float()).item()
 
             if verbose:
                 print(f"Iteration {i} :- Errors = {errs}, Deviations = {devs}")
@@ -435,6 +436,9 @@ def test_source_code_bp():
 
     # Encode the sample
     source_code_bp.encode()
+
+    # Perform doping
+    source_code_bp.doping()
 
     # Decode the sample
     _, _ = source_code_bp.decode(num_iter=100, verbose=True)

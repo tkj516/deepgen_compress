@@ -28,7 +28,7 @@ class MarkovSource():
         self.N = N
         # Number of bits per alphabet
         self.M = M
-        self.bits = np.log2(self.M)
+        self.bits = int(np.log2(self.M))
         # Total number of bits
         self.Nbits = self.N * self.bits
 
@@ -101,7 +101,7 @@ class MarkovSourceBP(nn.Module):
         self.h = npot.shape[0]
         self.w = npot.shape[1]
         self.N = self.h * self.w 
-        self.M = npot.shape[3]
+        self.M = npot.shape[2]
         
         # Define the node and edge potentials
         # Register the potentials as buffers to indicate non-trainable members of the module

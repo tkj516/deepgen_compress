@@ -4,17 +4,22 @@ from scipy.linalg.decomp import eig
 from scipy.stats import norm
 from scipy.linalg import toeplitz
 from numpy.linalg import eig
-from scipy.optimize import fsolve
+from scipy.optimize import root_scalar
 from numpy.matlib import repmat
 
 #############################################################
 # Bit and binary functions
 #############################################################
 
+# All unit tests pass
 def bitget(x, i):
+
+    if not isinstance(x, int):
+        x = int(x)
 
     return x >> i & 1
 
+# All unit tests pass
 def bin_to_gray(x, bits=8):
     """Convert integer to graycode.
 
@@ -27,11 +32,20 @@ def bin_to_gray(x, bits=8):
     """
 
     out = x >> 1 ^ x
-    out = bin(out).split('b')[-1].zfill(bits)
+    out = bin(out).split('b')[-1].zfill(bits)[::-1]
 
     return out
 
+# All unit tests pass
 def gray_to_bin(x):
+    """Convert graycode to integer.
+
+    Args:
+        x (int): Graycoded integer representation.
+
+    Returns:
+        int: Binary integer representation.
+    """
 
     mask = x >> 1
     out = x
@@ -41,6 +55,7 @@ def gray_to_bin(x):
 
     return out
 
+# All unit tests pass
 def convert_to_graycode(s, bits=8):
     """Convert integer samples to graycode.
 
@@ -61,6 +76,7 @@ def convert_to_graycode(s, bits=8):
 # Markov chain functions
 #############################################################
 
+# All unit tests pass
 def entropy(p):
     if len(p) == 1:
         if p[0] in [0, 1]:
@@ -71,7 +87,7 @@ def entropy(p):
     try:
         if np.abs(np.sum(p) - 1) <= 1e-15:
             temp = p * np.log2(p)
-            temp[np.isnan(p)] = 0.0
+            temp[np.isnan(temp)] = 0.0
             h = -np.sum(temp)
             return h
     except Exception as e:
@@ -88,7 +104,6 @@ def stochastic_matrix_entropy(
     epot * state_dist = new_state_dist
     """
 
-    print(bleed)
     if bleed <= 0:
         return 0
 
@@ -111,12 +126,14 @@ def stochastic_matrix_entropy(
 
     return h
 
+# All unit tests pass
 def generate_transition_matrix(
     M,
     hf=0.01,
 ):
 
-    bleed_src = fsolve(lambda x: np.array([stochastic_matrix_entropy(x_i, M) - hf for x_i in x]), M / 2)
+    bleed_src = root_scalar(lambda x: stochastic_matrix_entropy(x, M) - hf, x0=M/2, bracket=[0, M])
+    bleed_src = bleed_src.root
     # Start with a transition matrix
     prow = (norm.cdf(np.arange(0.5, M - 1 + 0.5 + 1), loc=0, scale=bleed_src)
                 - norm.cdf(np.arange(-0.5, M - 1 - 0.5 + 1), loc=0, scale=bleed_src))
@@ -164,7 +181,7 @@ def generate_sample(
                 np.random.rand() < np.cumsum(epot[:, s[-1]])
             ) - 1
         )
-    s = s.reshape(-1, 1)
+    s = np.array(s).reshape(-1, 1)
 
     # Get a graycode representation
     graycoded_s = convert_to_graycode(s, bits)
@@ -195,14 +212,14 @@ def msg_graycode_to_int(
 
     M = 2 ** bits
 
-    temp = M_in.reshape(bits, height, width, 2)
+    # TODO: Figure out a better hack
+    temp = M_in.reshape(bits, height, width, 2, order='F')
     M_out = np.ones((height, width, M))
 
     for i in range(bits):
         index_mask = np.array([bitget(a, i) for a in range(M)])
-        M_out[..., index_mask == 0] *= repmat(temp[i, ..., 0], 1, M // 2)
-        M_out[..., index_mask == 1] *= repmat(temp[i, ..., 1], 1, M // 2)
-
+        M_out[..., index_mask == 0] *= np.tile(temp[i, ..., 0], (M // 2, 1, 1)).transpose(1, 2, 0)
+        M_out[..., index_mask == 1] *= np.tile(temp[i, ..., 1], (M // 2, 1, 1)).transpose(1, 2, 0)
     M_out[:, :, [gray_to_bin(i) for i in range(M)]] = M_out
 
     if width == 1:
@@ -226,13 +243,13 @@ def msg_int_to_graycode(
     M_in = M_in.detach().cpu().numpy()
 
     M = M_in.shape[-1]
-    bits = np.log2(M)
+    bits = int(np.log2(M))
     N = M_in.shape[0]
     M_out = np.zeros((N * bits, 2))
 
-    graycodes = convert_to_graycode(np.arange(0, M))
+    graycodes = [bin_to_gray(i, bits) for i in range(M)]
 
-    for i in range(int(bits)):
+    for i in range(bits):
         index_mask = np.array([bitget(a, i) for a in graycodes])
         temp1 = np.sum(M_in[:, index_mask == 0], axis=1)
         temp2 = np.sum(M_in[:, index_mask == 1], axis=1)
