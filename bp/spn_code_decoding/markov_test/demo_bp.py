@@ -340,7 +340,7 @@ class SourceCodeBPPGM():
     def generate_sample(self):
 
         self.samp, self.graycoded_samp = generate_sample(
-                                            epot=self.markov.epot,
+                                            epot=self.markov.epot_src,
                                             sta=self.markov.sta,
                                             N=self.w,
                                             bits=self.bits,
@@ -377,10 +377,12 @@ class SourceCodeBPPGM():
         # Reshape to send to code
         self.M_to_code = msg_int_to_graycode(self.M_from_grid)
 
-    def decode(self, num_iter=1, verbose=False):
+    def decode(self, num_iter=1, verbose=False, writer=None):
 
         # Set the initial beliefs to all nans
         max_ll_old = torch.tensor(float('nan') * np.ones((self.h, self.w))).to(self.device)
+
+        self.video = []
 
         # Perform multiple iterations of belief propagation
         for i in range(num_iter):
@@ -392,6 +394,10 @@ class SourceCodeBPPGM():
             self.B = self.M_from_grid * self.M_to_grid * self.source.npot
             self.B /= torch.sum(self.B, -1, keepdims=True)
             self.max_ll = torch.argmax(self.B, -1)
+
+            # Add the video for logging
+            plot_max_ll = (self.max_ll - torch.min(self.samp)) / torch.max((self.samp - torch.min(self.samp)))
+            self.video.append(plot_max_ll.unsqueeze(0).unsqueeze(0).unsqueeze(0).repeat(1, 1, 1, 100, 1))
 
             # Termination condition to end belief propagation
             if torch.sum(torch.abs(self.max_ll - max_ll_old)).item() < 0.5:
@@ -405,12 +411,13 @@ class SourceCodeBPPGM():
             if verbose:
                 print(f"Iteration {i} :- Errors = {errs}, Deviations = {devs}")
 
-        return int(errs), int(devs)
+        return int(errs), int(devs), torch.cat(self.video, dim=1)
 
 def test_source_code_bp():
 
     parser = argparse.ArgumentParser("Test parser for source code BP")
     parser.add_argument("--device", type=str, default="cuda:0", help="Device to run test")
+    parser.add_argument("--log_video", action="store_true", help="Whether to log results in a video")
     args = parser.parse_args()
 
     h = 1
@@ -440,9 +447,23 @@ def test_source_code_bp():
     # Perform doping
     source_code_bp.doping()
 
+    writer = None
+    if args.log_video:
+        # Create the writer
+        timestamp = time.strftime("%Y-%m-%d_%H:%M:%S")
+        writer = SummaryWriter(f'markov_source_bp_results/tensorboard/{timestamp}')
+        # Write the args to tensorboard
+        writer.add_text('config', str(args.__dict__))
+
     # Decode the sample
-    _, _ = source_code_bp.decode(num_iter=100, verbose=True)
+    _, _, video = source_code_bp.decode(num_iter=100, verbose=True, writer=writer)
+
+    if args.log_video:
+        writer.add_video(f'convergence_video', video, fps=1, global_step=0)
+        plot_samp = source_code_bp.samp.reshape(1, h, w).repeat(1, 100, 1)
+        plot_samp = (plot_samp - torch.min(plot_samp)) / torch.max((plot_samp - torch.min(plot_samp)))
+        writer.add_image('original_sample', plot_samp, global_step=0)
 
 if __name__ == "__main__":
 
-    test_source_code_bp()
+   test_source_code_bp()

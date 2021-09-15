@@ -50,8 +50,8 @@ def test_convert_to_graycode():
 
 def test_msg_graycode_to_int():
 
-    M_from_code = torch.tensor(loadmat("M_from_code.mat")["M_from_code"])
-    M_to_grid = loadmat("M_to_grid.mat")["M_to_grid"]
+    M_from_code = torch.tensor(loadmat("unit_test_files/M_from_code.mat")["M_from_code"])
+    M_to_grid = loadmat("unit_test_files/M_to_grid.mat")["M_to_grid"]
 
     out = msg_graycode_to_int(M_from_code, 1, 1000, bits=8).cpu().numpy()
 
@@ -59,8 +59,8 @@ def test_msg_graycode_to_int():
 
 def test_msg_int_to_graycode():
 
-    M_from_grid = torch.tensor(loadmat("M_from_grid.mat")["M_from_grid"])
-    M_to_code = loadmat("M_to_code.mat")["M_to_code"]
+    M_from_grid = torch.tensor(loadmat("unit_test_files/M_from_grid.mat")["M_from_grid"])
+    M_to_code = loadmat("unit_test_files/M_to_code.mat")["M_to_code"]
 
     out = msg_int_to_graycode(M_from_grid).cpu().numpy()
 

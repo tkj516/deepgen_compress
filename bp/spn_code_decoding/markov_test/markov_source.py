@@ -40,7 +40,7 @@ class MarkovSource():
         # Generate a markov chain
         (
             self.bleed_src,
-            _,
+            self.epot_src,
             self.sta
         ) = generate_transition_matrix(self.M, self.hf)
 
@@ -61,7 +61,7 @@ class MarkovSource():
         """
 
         samp, graycoded_samp = generate_sample(
-                                    self.epot, 
+                                    self.epot_src, 
                                     self.sta, 
                                     self.N, 
                                     self.bits

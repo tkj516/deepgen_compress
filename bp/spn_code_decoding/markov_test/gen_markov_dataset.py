@@ -1,6 +1,10 @@
 import numpy as np
 import os
 import argparse
+import sys
+
+sys.path.append('..')
+sys.path.append('../..')
 
 from spn_code_decoding.markov_test.utils import *
 from spn_code_decoding.markov_test.markov_source import *
@@ -10,7 +14,7 @@ parser.add_argument('--height', type=int, default=1, help="Height of image")
 parser.add_argument('--width', type=int, default=1000, help="Width of image")
 parser.add_argument('--alphabet_size', type=int, default=256, help="Alphabet size")
 parser.add_argument('--reference_entropy', type=float, default=0.01, help="Reference entropy")
-parser.add_argument('--num_samples', type=int, default=20000, help="Number of images in dataset")
+parser.add_argument('--num_samples', type=int, default=200000, help="Number of images in dataset")
 parser.add_argument('--root', type=str, default='data', help="Directory to store images")
 args = parser.parse_args()
 
@@ -46,14 +50,14 @@ if __name__ == "__main__":
     while count < args.num_samples:
 
         # Sample a new image
-        samp, graycoded_samp = generate_sample(
-                                    epot=markov.epot,
-                                    sta=markov.sta,
-                                    N=w,
-                                    bits=bits,
-                                )
+        sample, _ = generate_sample(
+                        epot=markov.epot_src,
+                        sta=markov.sta,
+                        N=w,
+                        bits=bits,
+                    )
         
-        sample_has = tuple(samp.reshape(-1, ))
+        sample_hash = tuple(sample.reshape(-1, ))
 
         if sample_hash in check_map:
             pass
