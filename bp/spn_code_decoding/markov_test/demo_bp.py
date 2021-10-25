@@ -513,7 +513,7 @@ def test_source_code_bp_spn():
 
     h = 1
     w = 1000
-    rate = 0.92
+    rate = 0.90
     M = 256
     bits = int(np.log2(M))
     N_bits = h * w * bits
@@ -530,7 +530,7 @@ def test_source_code_bp_spn():
                         H=pyldpc_generate.generate(int(rate * N_bits), N_bits, 3.0, 2, 123),
                         h=h,
                         w=w,
-                        doperate=0.08,
+                        doperate=0.07,
                         args=args,
                     )
 
