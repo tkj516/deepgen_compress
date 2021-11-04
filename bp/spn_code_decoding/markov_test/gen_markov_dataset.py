@@ -58,6 +58,7 @@ if __name__ == "__main__":
                     )
         
         sample_hash = tuple(sample.reshape(-1, ))
+        print(sample)
 
         if sample_hash in check_map:
             pass

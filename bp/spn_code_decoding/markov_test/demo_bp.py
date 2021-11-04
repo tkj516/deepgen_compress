@@ -349,7 +349,7 @@ class SourceCodeBPPGM():
         
         self.samp = x
         self.samp = torch.FloatTensor(self.samp).to(self.device)
-        self.graycoded_samp = torch.FloatTensor(convert_to_graycode(x, bits=self.bits))
+        self.graycoded_samp = torch.FloatTensor(convert_to_graycode(self.samp.cpu().numpy().astype('uint8'), bits=self.bits)).to(self.device)
 
     def encode(self):
 
@@ -410,7 +410,7 @@ class SourceCodeBPPGM():
 
         return int(errs), int(devs), torch.cat(self.video, dim=1)
 
-def test_source_code_bp():
+def test_source_code_bp_pgm():
 
     parser = argparse.ArgumentParser("Test parser for source code BP")
     parser.add_argument("--device", type=str, default="cuda:0", help="Device to run test")
@@ -419,7 +419,7 @@ def test_source_code_bp():
 
     h = 1
     w = 1000
-    rate = 0.9
+    rate = 0.5
     M = 256
     bits = int(np.log2(M))
     N_bits = h * w * bits
@@ -448,7 +448,7 @@ def test_source_code_bp():
     if args.log_video:
         # Create the writer
         timestamp = time.strftime("%Y-%m-%d_%H:%M:%S")
-        writer = SummaryWriter(f'markov_source_bp_results/tensorboard/{timestamp}')
+        writer = SummaryWriter(f'markov_source_bp_results/pgm/tensorboard/{timestamp}')
         # Write the args to tensorboard
         writer.add_text('config', str(args.__dict__))
 
@@ -513,7 +513,7 @@ def test_source_code_bp_spn():
 
     h = 1
     w = 1000
-    rate = 0.90
+    rate = 0.9
     M = 256
     bits = int(np.log2(M))
     N_bits = h * w * bits
@@ -560,6 +560,144 @@ def test_source_code_bp_spn():
         plot_samp = (plot_samp - torch.min(plot_samp)) / torch.max((plot_samp - torch.min(plot_samp)))
         writer.add_image('original_sample', plot_samp, global_step=0)
 
+def compare_source_code_bp():
+
+    parser = argparse.ArgumentParser(description='Belief propagation training arguments')
+    parser.add_argument('--ldpc_mat', type=str, default='../H_28.mat', help="Path to LDPC matrix")
+    parser.add_argument('--device', type=str, default='cuda:0', help="Device to run the code on")
+    parser.add_argument('--num_iter', type=int, default=100, help="Number of bp iterations")
+    parser.add_argument('--doperate', type=float, default=0.04, help="Dope rate")
+    parser.add_argument('--rate', type=float, default=0.5, help='Compression rate')
+    parser.add_argument('--console_display', action='store_true', default=False, help="Visualize results in matplotlib")
+    parser.add_argument('--num_experiments', type=int, default=1, help="Number of bp experiments")
+    parser.add_argument('--checkpoint', type=str, default=None, help='Path to checkpoint file')
+    parser.add_argument('--num_avg', type=int, default=1000, help='Number of examples to use for averaging')
+    parser.add_argument('--phase', type=str, default='test', help='Phase option for Ising dataset')
+    parser.add_argument('--source_type', choices=['pgm', 'spn'], default='spn', help='The type of source model to use')
+    # DGC-SPN arguments
+    parser.add_argument('--dequantize', action='store_true', help='Whether to use dequantization.')
+    parser.add_argument('--logit', type=float, default=None, help='The logit value to use for vision datasets.')
+    parser.add_argument('--discriminative', action='store_true', help='Whether to use discriminative settings.')
+    parser.add_argument('--n-batches', type=int, default=256, help='The number of input distribution layer batches.')
+    parser.add_argument('--sum-channels', type=int, default=32, help='The number of channels at sum layers.')
+    parser.add_argument('--depthwise', action='store_true', help='Whether to use depthwise convolution layers.')
+    parser.add_argument('--n-pooling', type=int, default=0, help='The number of initial pooling product layers.')
+    parser.add_argument(
+        '--no-optimize-scale', dest='optimize_scale',
+        action='store_false', help='Whether to optimize scale in Gaussian layers.'
+    )
+    parser.add_argument(
+        '--quantiles-loc', action='store_true', default=False,
+        help='Whether to use mean quantiles for leaves initialization.'
+    )
+    parser.add_argument(
+        '--uniform-loc', nargs=2, type=float, default=None,
+        help='Use uniform location for leaves initialization.'
+    )
+    parser.add_argument('--in-dropout', type=float, default=None, help='The input distributions layer dropout to use.')
+    parser.add_argument('--sum-dropout', type=float, default=None, help='The sum layer dropout to use.')
+    parser.add_argument('--learning-rate', type=float, default=1e-3, help='The learning rate.')
+    parser.add_argument('--batch-size', type=int, default=128, help='The batch size.')
+    parser.add_argument('--epochs', type=int, default=100, help='The number of epochs.')
+    parser.add_argument('--patience', type=int, default=30, help='The epochs patience used for early stopping.')
+    parser.add_argument('--weight-decay', type=float, default=0.0, help='L2 regularization factor.')
+    parser.add_argument('--binary', action='store_true', default=False, help='Use binary model and binarize dataset')
+    parser.add_argument('--continue_checkpoint', default=None, help='Checkpoint to continue training from')
+    parser.add_argument('--dataset', type=str, default='markov', help='Dataset to use for training')
+    parser.add_argument('--root_dir', type=str, default='/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/spn_code_decoding/markov_test/markov_hf_001',
+                    help='Dataset root directory')
+    parser.add_argument('--gpu_id', type=int, default=0, help="GPU device to use")
+    parser.add_argument("--log_video", action="store_true", help="Whether to log results in a video")
+    args = parser.parse_args()
+
+    h = 1
+    w = 1000
+    rate = 0.5
+    M = 256
+    bits = int(np.log2(M))
+    N_bits = h * w * bits
+
+    # Set some default values
+    args.n_batches = M
+    args.depthwise = True
+    args.binary = True
+
+    source_code_bp_spn = SourceCodeBP(
+                        H=pyldpc_generate.generate(int(rate * N_bits), N_bits, 3.0, 2, 123),
+                        h=h,
+                        w=w,
+                        doperate=0.15,
+                        args=args,
+                    )
+
+    # Generate a sample
+    source_code_bp_spn.generate_sample()
+
+    # Encode the sample
+    source_code_bp_spn.encode()
+
+    # Perform doping
+    source_code_bp_spn.doping()
+
+    writer = None
+    if args.log_video:
+        # Create the writer
+        timestamp = time.strftime("%Y-%m-%d_%H:%M:%S")
+        writer = SummaryWriter(f'markov_source_bp_results/compare/tensorboard/{timestamp}/spn')
+        # Write the args to tensorboard
+        writer.add_text('config', str(args.__dict__))
+
+    # Decode the sample
+    _, _, video = source_code_bp_spn.decode(num_iter=100, verbose=True, writer=writer)
+
+    if args.log_video:
+        writer.add_video(f'convergence_video', video, fps=1, global_step=0)
+        plot_samp = source_code_bp_spn.samp.reshape(1, h, w).repeat(1, 100, 1)
+        plot_samp = (plot_samp - torch.min(plot_samp)) / torch.max((plot_samp - torch.min(plot_samp)))
+        writer.add_image('original_sample', plot_samp, global_step=0)
+
+    
+        source_code_bp_pgm = SourceCodeBPPGM(
+        H=pyldpc_generate.generate(int(rate * N_bits), N_bits, 3.0, 2, 123),
+        h=h,
+        w=w,
+        alpha=0.9,
+        doperate=0.04,
+        M=M,
+        hf=0.01,
+        args=args,
+    )
+
+    # Using PGM 
+
+    # Set the sample
+    source_code_bp_pgm.set_sample(source_code_bp_spn.samp.cpu())
+
+    # Encode the sample
+    source_code_bp_pgm.encode()
+
+    # Perform doping
+    source_code_bp_pgm.doping()
+
+    writer = None
+    if args.log_video:
+        # Create the writer
+        timestamp = time.strftime("%Y-%m-%d_%H:%M:%S")
+        writer = SummaryWriter(f'markov_source_bp_results/compare/tensorboard/{timestamp}/pgm')
+        # Write the args to tensorboard
+        writer.add_text('config', str(args.__dict__))
+
+    # Decode the sample
+    _, _, video = source_code_bp_pgm.decode(num_iter=100, verbose=True, writer=writer)
+
+    if args.log_video:
+        writer.add_video(f'convergence_video', video, fps=1, global_step=0)
+        plot_samp = source_code_bp_pgm.samp.reshape(1, h, w).repeat(1, 100, 1)
+        plot_samp = (plot_samp - torch.min(plot_samp)) / torch.max((plot_samp - torch.min(plot_samp)))
+        writer.add_image('original_sample', plot_samp, global_step=0)
+
+
 if __name__ == "__main__":
 
-   test_source_code_bp_spn()
+#    test_source_code_bp_pgm()
+    compare_source_code_bp()
