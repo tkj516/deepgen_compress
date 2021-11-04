@@ -1,4 +1,5 @@
 import torch
+import math
 import numpy as np
 from scipy.linalg.decomp import eig
 from scipy.stats import norm
@@ -67,7 +68,7 @@ def convert_to_graycode(s, bits=8):
         np.ndarray: Graycoded samples
     """
     
-    out = ''.join([bin_to_gray(sample)[1][::-1] for sample in s.flatten()])
+    out = ''.join([bin_to_gray(sample, bits)[1][::-1] for sample in s.flatten()])
     out = np.array([float(sample) for sample in out]).reshape(-1, 1)
 
     return out
@@ -244,7 +245,7 @@ def msg_int_to_graycode(
     M_in = M_in.detach().cpu().numpy()
 
     M = M_in.shape[-1]
-    bits = int(np.log2(M))
+    bits = math.ceil(np.log2(M))
     N = M_in.shape[0]
     M_out = np.zeros((N * bits, 2))
 

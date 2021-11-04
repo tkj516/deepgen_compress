@@ -5,6 +5,7 @@ sys.path.append('../..')
 import os
 import time
 import argparse
+import math
 import numpy as np
 from tqdm import tqdm
 import matplotlib as mpl
@@ -97,7 +98,7 @@ class Source():
         y = self.model.root_layer(y)
 
         # Compute the gradients at distribution leaves
-        (z_grad,) = torch.autograd.grad(y, z, grad_outputs=torch.ones_like(y))  # 1 x 256 x 1000
+        (z_grad,) = torch.autograd.grad(y, z, grad_outputs=torch.ones_like(y))  # 1 x alphabet_size x 1000
 
         # Reshape to get message
         message = z_grad
@@ -105,7 +106,7 @@ class Source():
         # Remember that the derivative at an indicator enforces that the pixel is either 0 or 1
         # But it was actually scaled by the external prob, so remove it to resemble slow message passing
         message = torch.log(message) - external_log_probs
-        message = message.permute(0, 2, 1)  # 1 x 1000 x 256
+        message = message.permute(0, 2, 1)  # 1 x 1000 x alphabet_size
         # Replace doped probabilities with correct label
         message = torch.where(dope_mask == 1, external_log_probs.permute(0, 2, 1), message)
         # Remove nans after division
@@ -132,6 +133,10 @@ class SourceCodeBP():
         self.w = w
         self.p = p
         self.doperate = doperate
+        self.alphabet_size = args.n_batches
+
+        # Number of bits per alphabet
+        self.bits = math.ceil(np.log2(self.alphabet_size))
 
         # Store the parity check matrix
         self.H = torch.FloatTensor(np.array(H.todense()).astype('float32')).to(self.device)
@@ -151,9 +156,9 @@ class SourceCodeBP():
         self.code = CodeBP(self.H, self.device).to(self.device)
 
         # Store a matrix for doping probabilities
-        self.npot = torch.ones(self.h, self.w, 256).to(self.device) / 256.0
+        self.npot = torch.ones(self.h, self.w, self.alphabet_size).to(self.device) / self.alphabet_size
         # Store a matrix for masking
-        self.mask = torch.zeros(self.h, self.w, 256).to(self.device)
+        self.mask = torch.zeros(self.h, self.w, self.alphabet_size).to(self.device)
         # Input image
         self.samp = None
 
@@ -181,14 +186,14 @@ class SourceCodeBP():
         self.samp, _ = self.dataset[idx]
         self.samp = torch.FloatTensor(self.samp.reshape(-1, 1)).to(self.device)
         # Works well with Numpy so just convert it to be safe
-        self.graycoded_samp = torch.FloatTensor(convert_to_graycode(self.samp.cpu().numpy().astype('uint8'), bits=8)).to(self.device)
+        self.graycoded_samp = torch.FloatTensor(convert_to_graycode(self.samp.cpu().numpy().astype('uint8'), bits=self.bits)).to(self.device)
 
     def set_sample(self, x):
         
         self.samp = x
         self.samp = torch.FloatTensor(self.samp.reshape(-1, 1)).to(self.device)
         # Works well with Numpy so just convert it to be safe
-        self.graycoded_samp = torch.FloatTensor(convert_to_graycode(self.samp.cpu().numpy().astype('uint8'), bits=8)).to(self.device)
+        self.graycoded_samp = torch.FloatTensor(convert_to_graycode(self.samp.cpu().numpy().astype('uint8'), bits=self.bits)).to(self.device)
 
     def encode(self):
 
@@ -204,8 +209,8 @@ class SourceCodeBP():
             M_in=self.M_from_code,
             height=self.h,
             width=self.w,
-            bits=8,
-        )  # 1 x 1000 x 256
+            bits=self.bits,
+        )  # 1 x 1000 x alphabet_size
 
         # Perform one step of source graph belief propagation
         # TODO: Make sure that there is no conflict in the probabilities.  For example if npot
@@ -284,7 +289,7 @@ class SourceCodeBPPGM():
         self.hf = hf
         
         # Number of bits per alphabet
-        self.bits = int(np.log2(self.M))
+        self.bits = math.ceil(np.log2(self.M))
 
         # Store the parity check matrix
         self.H = torch.FloatTensor(np.array(H.todense()).astype('float32')).to(self.device)  # torch.FloatTensor(H).to(self.device)
@@ -415,13 +420,15 @@ def test_source_code_bp_pgm():
     parser = argparse.ArgumentParser("Test parser for source code BP")
     parser.add_argument("--device", type=str, default="cuda:0", help="Device to run test")
     parser.add_argument("--log_video", action="store_true", help="Whether to log results in a video")
+    parser.add_argument("--alphabet_size", type=int, default=256, help="Alphabet size of the markov chain")
+    parser.add_argument("--rate", type=float, default=0.9, help="Compression rate")
     args = parser.parse_args()
 
     h = 1
     w = 1000
-    rate = 0.5
-    M = 256
-    bits = int(np.log2(M))
+    rate = args.rate
+    M = args.alphabet_size
+    bits = math.ceil(np.log2(M))
     N_bits = h * w * bits
 
     source_code_bp = SourceCodeBPPGM(
@@ -513,13 +520,12 @@ def test_source_code_bp_spn():
 
     h = 1
     w = 1000
-    rate = 0.9
-    M = 256
-    bits = int(np.log2(M))
+    rate = args.rate
+    M = args.n_batches
+    bits = math.ceil(np.log2(M))
     N_bits = h * w * bits
 
     # Set some default values
-    args.n_batches = M
     args.depthwise = True
     args.binary = True
     # args.checkpoint = (
@@ -612,13 +618,12 @@ def compare_source_code_bp():
 
     h = 1
     w = 1000
-    rate = 0.5
-    M = 256
-    bits = int(np.log2(M))
+    rate = args.rate
+    M = args.n_batches
+    bits = math.ceil(np.log2(M))
     N_bits = h * w * bits
 
     # Set some default values
-    args.n_batches = M
     args.depthwise = True
     args.binary = True
 
@@ -699,5 +704,5 @@ def compare_source_code_bp():
 
 if __name__ == "__main__":
 
-#    test_source_code_bp_pgm()
-    compare_source_code_bp()
+    test_source_code_bp_pgm()
+    # compare_source_code_bp()
