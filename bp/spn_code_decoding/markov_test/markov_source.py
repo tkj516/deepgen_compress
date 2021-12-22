@@ -120,7 +120,7 @@ class MarkovSourceBP(nn.Module):
         # Set them as parameters for gradient backpropagation
         self.Mr = nn.Parameter(torch.ones(self.h, self.w-1, self.M) / self.M)
         self.Ml = nn.Parameter(torch.ones(self.h, self.w-1, self.M) / self.M)
-        self.Mout = nn.Parameter(torch.ones(self.h, self.w, self.M) / self.M)
+        self.Mout = torch.ones(self.h, self.w, self.M) / self.M
 
         # Initialize the learning rate
         self.alpha = alpha
@@ -133,6 +133,8 @@ class MarkovSourceBP(nn.Module):
         Min : 1 x N x M
         Mout: 1 x N x M
         """
+
+        del self.Mout
        
         # Resolve contradictory signals
         S = torch.sum(self.npot * Min, -1)
@@ -160,10 +162,11 @@ class MarkovSourceBP(nn.Module):
         self.Ml.data = self.alpha*Ml1 + (1-self.alpha)*self.Ml.data
 
         # Compute Mout
-        self.Mout.data = torch.ones(self.h, self.w, self.M).to(self.device)
+        self.Mout = torch.ones(self.h, self.w, self.M).to(self.device)
         self.Mout[:, 1:, :] *= self.Mr
         self.Mout[:, :-1, :] *= self.Ml
         self.Mout.data /= torch.sum(self.Mout.data, -1, keepdim=True)
+
 
     def reset_messages(self):
 
@@ -176,9 +179,3 @@ class MarkovSourceBP(nn.Module):
 
         for i in tqdm(range(num_iter)):
             self.forward(Min)
-
-
-
-
-
-

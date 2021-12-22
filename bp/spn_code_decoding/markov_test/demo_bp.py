@@ -259,7 +259,7 @@ class SourceCodeBP():
             if verbose:
                 print(f"Iteration {i} :- Errors = {errs}, Deviations = {devs}")
 
-        return int(errs), int(devs), torch.cat(self.video, dim=1)
+        return errs, int(devs), torch.cat(self.video, dim=1)
 
 ##################################################################################
 # SOURCE-CODE BELIEF PROPAGATION USING PROBABILISTIC GRAPHICAL MODEL (PGM)
@@ -329,6 +329,13 @@ class SourceCodeBPPGM():
         self.M_to_grid = None
         self.B = None
 
+    def delete(self):
+
+        del self.M_to_code
+        del self.M_from_code
+        del self.M_to_grid
+        del self.M_from_grid
+
     def doping(self):
 
         indices = np.random.choice(self.w, size=int(self.w*self.doperate), replace=False)
@@ -353,7 +360,7 @@ class SourceCodeBPPGM():
     def set_sample(self, x):
         
         self.samp = x
-        self.samp = torch.FloatTensor(self.samp).to(self.device)
+        self.samp = torch.FloatTensor(self.samp.reshape(-1, 1)).to(self.device)
         self.graycoded_samp = torch.FloatTensor(convert_to_graycode(self.samp.cpu().numpy().astype('uint8'), bits=self.bits)).to(self.device)
 
     def encode(self):
@@ -413,7 +420,7 @@ class SourceCodeBPPGM():
             if verbose:
                 print(f"Iteration {i} :- Errors = {errs}, Deviations = {devs}")
 
-        return int(errs), int(devs), torch.cat(self.video, dim=1)
+        return errs, int(devs), torch.cat(self.video, dim=1)
 
 def test_source_code_bp_pgm():
 
@@ -528,15 +535,12 @@ def test_source_code_bp_spn():
     # Set some default values
     args.depthwise = True
     args.binary = True
-    # args.checkpoint = (
-    #     "/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/spn_code_decoding/markov_test/dgcspn_1d/dgcspn_1d/markov/generative/model_2021-09-15_14:24:05.pt"
-    # )
 
     source_code_bp = SourceCodeBP(
                         H=pyldpc_generate.generate(int(rate * N_bits), N_bits, 3.0, 2, 123),
                         h=h,
                         w=w,
-                        doperate=0.07,
+                        doperate=args.doperate,
                         args=args,
                     )
 
@@ -631,7 +635,7 @@ def compare_source_code_bp():
                         H=pyldpc_generate.generate(int(rate * N_bits), N_bits, 3.0, 2, 123),
                         h=h,
                         w=w,
-                        doperate=0.15,
+                        doperate=args.doperate,
                         args=args,
                     )
 
@@ -662,18 +666,20 @@ def compare_source_code_bp():
         writer.add_image('original_sample', plot_samp, global_step=0)
 
     
-        source_code_bp_pgm = SourceCodeBPPGM(
-        H=pyldpc_generate.generate(int(rate * N_bits), N_bits, 3.0, 2, 123),
-        h=h,
-        w=w,
-        alpha=0.9,
-        doperate=0.04,
-        M=M,
-        hf=0.01,
-        args=args,
-    )
+    source_code_bp_pgm = SourceCodeBPPGM(
+                        H=pyldpc_generate.generate(int(rate * N_bits), N_bits, 3.0, 2, 123),
+                        h=h,
+                        w=w,
+                        alpha=0.9,
+                        doperate=args.doperate,
+                        M=M,
+                        hf=0.01,
+                        args=args,
+                    )
 
+    ##################
     # Using PGM 
+    ##################
 
     # Set the sample
     source_code_bp_pgm.set_sample(source_code_bp_spn.samp.cpu())
@@ -701,8 +707,8 @@ def compare_source_code_bp():
         plot_samp = (plot_samp - torch.min(plot_samp)) / torch.max((plot_samp - torch.min(plot_samp)))
         writer.add_image('original_sample', plot_samp, global_step=0)
 
-
 if __name__ == "__main__":
 
-    test_source_code_bp_pgm()
-    # compare_source_code_bp()
+    # test_source_code_bp_pgm()
+    # test_source_code_bp_spn()
+    compare_source_code_bp()
