@@ -54,7 +54,8 @@ def torch_train(
         writer=None,
         checkpoint_name=None,
         continue_checkpoint=None,
-        gpu_id=0
+        gpu_id=0,
+        data_parallel=False,
 ):
     """
     Train a Torch model.
@@ -72,6 +73,7 @@ def torch_train(
     :param n_workers: The number of workers for data loading.
     :param device: The device used for training. If it's None 'cuda' will be used, if available.
     :param verbose: Whether to enable verbose mode.
+    :param data_parallel: Whether model is trained using DataParallel.
     :return: The train history.
     """
     # Get the device to use
@@ -104,10 +106,10 @@ def torch_train(
         train_func = torch_train_discriminative
     else:
         raise ValueError('Unknown train setting called %s' % setting)
-    return train_func(model, train_loader, val_loader, optimizer, epochs, patience, device, verbose, writer, checkpoint_name)
+    return train_func(model, train_loader, val_loader, optimizer, epochs, patience, device, verbose, writer, checkpoint_name, data_parallel)
 
 
-def torch_train_generative(model, train_loader, val_loader, optimizer, epochs, patience, device, verbose, writer, checkpoint_name):
+def torch_train_generative(model, train_loader, val_loader, optimizer, epochs, patience, device, verbose, writer, checkpoint_name, data_parallel):
     """
     Train a Torch model in generative setting.
 
@@ -130,7 +132,8 @@ def torch_train_generative(model, train_loader, val_loader, optimizer, epochs, p
     early_stopping = EarlyStopping(patience=patience)
 
     # Move the model to device
-    model.to(device)
+    if not data_parallel:
+        model.to(device)
 
     log_inputs = True
     for epoch in range(epochs):
