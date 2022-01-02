@@ -28,6 +28,17 @@ from spn_code_decoding.markov_test.markov_source import *
 
 from tensorboardX import SummaryWriter
 
+# Define a class for DataParallel that can access attributes
+class MyDataParallel(torch.nn.DataParallel):
+    """
+    Allow nn.DataParallel to call model's attributes.
+    """
+    def __getattr__(self, name):
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            return getattr(self.module, name)
+
 ##################################################################################
 # SOURCE-CODE BELIEF PROPAGATION USING SUM-PRODUCT NETWORK (SPN)
 ##################################################################################
@@ -68,6 +79,11 @@ class Source():
                         rand_state=np.random.RandomState(42),
                         leaf_distribution=leaf_distribution
                     ).to(self.device)
+
+        # TODO:  Please look into this 12/30
+        if args.data_parallel:
+            self.model = MyDataParallel(self.model, device_ids=[0, 1])
+            self.model.to(self.device)
 
         # Restore the checkpoint and set to evaluation mode
         model_checkpoint = torch.load(args.checkpoint)
@@ -618,6 +634,7 @@ def compare_source_code_bp():
                     help='Dataset root directory')
     parser.add_argument('--gpu_id', type=int, default=0, help="GPU device to use")
     parser.add_argument("--log_video", action="store_true", help="Whether to log results in a video")
+    parser.add_argument('--data_parallel', action='store_true', default=False, help="Whether to use DataParallel while training.")
     args = parser.parse_args()
 
     h = 1
