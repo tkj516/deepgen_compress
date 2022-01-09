@@ -630,7 +630,7 @@ def compare_source_code_bp():
     parser.add_argument('--binary', action='store_true', default=False, help='Use binary model and binarize dataset')
     parser.add_argument('--continue_checkpoint', default=None, help='Checkpoint to continue training from')
     parser.add_argument('--dataset', type=str, default='markov', help='Dataset to use for training')
-    parser.add_argument('--root_dir', type=str, default='/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/spn_code_decoding/markov_test/markov_hf_001',
+    parser.add_argument('--root_dir', type=str, default='/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/spn_code_decoding/markov_test/markov_hf_001_alphabet_256',
                     help='Dataset root directory')
     parser.add_argument('--gpu_id', type=int, default=0, help="GPU device to use")
     parser.add_argument("--log_video", action="store_true", help="Whether to log results in a video")

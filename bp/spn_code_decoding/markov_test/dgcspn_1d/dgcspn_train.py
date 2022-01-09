@@ -92,7 +92,7 @@ if __name__ == '__main__':
         out_classes = 1
 
     # Create the results directory
-    directory = os.path.join('dgcspn_1d', args.dataset)
+    directory = os.path.join('/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/spn_code_decoding/markov_test/dgcspn_1d/dgcspn_1d', args.dataset)
     os.makedirs(directory, exist_ok=True)
     timestamp = time.strftime("%Y-%m-%d_%H:%M:%S")
     directory = os.path.join(directory, 'generative')
