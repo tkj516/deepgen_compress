@@ -49,6 +49,81 @@ class SpatialIndicatorLayer(torch.nn.Module):
 
         return indicators
 
+class SpatialCategoricalLayer(torch.nn.Module):
+    """Spatial Categorical input layer."""
+    def __init__(self, in_size, out_channels, alphabet_size=256, dropout=None):
+        """
+        Initialize a Spatial Gaussian input layer.
+
+        :param in_size: The size of the input tensor.
+        :param out_channels: The number of output channels.
+        :param optimize_scale: Whether to optimize scale.
+        :param dropout: The leaf nodes dropout rate. It can be None.
+        :param quantiles_loc: The mean quantiles for location initialization. It can be None.
+        :param uniform_loc: The uniform range for location initialization. It can be None.
+        """
+        super(SpatialCategoricalLayer, self).__init__()
+        self.in_size = in_size
+        self.out_channels = out_channels
+        self.dropout = dropout
+        self.alphabet_size = alphabet_size
+
+        # Instantiate the logits distribution parameters
+        self.logits = torch.nn.Parameter(
+            torch.rand(self.out_channels, *self.in_size, self.alphabet_size), requires_grad=True
+        )
+
+        # Instantiate the multi-batch normal distribution
+        self.distribution = torch.distributions.Categorical(logits=self.logits)
+
+        # Initialize some useful constants
+        self.register_buffer('zero', torch.zeros(1))
+        self.register_buffer('nan', torch.tensor(np.nan))
+
+    @property
+    def in_channels(self):
+        return self.in_size[0]
+
+    @property
+    def in_length(self):
+        return self.in_size[1]
+
+    @property
+    def out_size(self):
+        return self.out_channels, self.in_length
+
+    def forward(self, x):
+        """
+        Evaluate the layer given some inputs.
+
+        :param x: The inputs.
+        :return: The tensor result of the layer.
+        """
+
+        def log_pmf(x):
+            # Compute the log-likelihoods
+            # Taken from https://pytorch.org/docs/1.7.1/_modules/torch/distributions/categorical.html#Categorical
+            x = x.long().unsqueeze(-1)
+            w = self.logits - self.logits.logsumexp(dim=-1, keepdim=True)
+            w = w.unsqueeze(0)
+            value, x= torch.broadcast_tensors(x, w)
+            return x.gather(-1, value[..., :1]).squeeze(-1)
+
+        # x = log_pmf(x)
+        x = torch.unsqueeze(x, dim=1)
+        x = log_pmf(x)
+
+        # Apply the input dropout, if specified
+        if self.training and self.dropout is not None:
+            x = torch.where(torch.gt(torch.rand_like(x), self.dropout), x, self.nan)
+
+        # Marginalize missing values (denoted with NaNs)
+        x = torch.where(torch.isnan(x), self.zero, x)
+
+        # This implementation assumes independence between channels of the same pixel random variables
+        return torch.sum(x, dim=2)
+
+
 class SpatialGaussianLayer(torch.nn.Module):
     """Spatial Gaussian input layer."""
     def __init__(self, in_size, out_channels, optimize_scale, dropout=None, quantiles_loc=None, uniform_loc=None):

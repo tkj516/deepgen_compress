@@ -1,13 +1,13 @@
 import sys
 sys.path.append('..')
+sys.path.append('../../..')
 
 import torch
 import numpy as np
 
 from spnflow.torch.models.abstract import AbstractModel
-from spnflow.torch.layers.dgcspn import SpatialGaussianLayer, SpatialProductLayer, SpatialSumLayer, SpatialRootLayer
+from dgcspn_1d.layers.dgcspn import SpatialCategoricalLayer, SpatialIndicatorLayer, SpatialGaussianLayer, SpatialProductLayer, SpatialSumLayer, SpatialRootLayer
 from spnflow.torch.constraints import ScaleClipper
-from my_experiments.spatial_distributions import SpatialIndicatorLayer
 
 
 class DgcSpn(AbstractModel):
@@ -27,7 +27,8 @@ class DgcSpn(AbstractModel):
                  quantiles_loc=None,
                  uniform_loc=None,
                  rand_state=None,
-                 leaf_distribution='gaussian'
+                 leaf_distribution='gaussian',
+                 alphabet_size=256,
                  ):
         """
         Initialize a SpatialSpn.
@@ -49,7 +50,8 @@ class DgcSpn(AbstractModel):
                            Used only if depthwise is False.
         """
         super(DgcSpn, self).__init__(dequantize=dequantize, logit=logit)
-        assert len(in_size) == 3 and in_size[0] > 0 and in_size[1] > 0 and in_size[2] > 0
+        # Size is only two for 1D signal (in_channels, in_length)
+        assert len(in_size) == 2 and in_size[0] > 0 and in_size[1] > 0
         assert out_classes > 0
         assert n_batch > 0
         assert sum_channels > 0
@@ -71,6 +73,7 @@ class DgcSpn(AbstractModel):
         self.sum_dropout = sum_dropout
         self.uniform_loc = uniform_loc
         self.rand_state = rand_state
+        self.alphabet_size = alphabet_size
 
         # TODO: Is the input distribution continuous or discrete
         self.leaf_distribution = leaf_distribution
@@ -98,18 +101,18 @@ class DgcSpn(AbstractModel):
                 self.in_size,
                 self.n_batch
             )
+        elif self.leaf_distribution == 'categorical':
+            self.base_layer = SpatialCategoricalLayer(
+                self.in_size,
+                self.n_batch,
+                alphabet_size=self.alphabet_size,
+            )
         else:
             raise NotImplementedError('Distribution is not implemented for DGC-SPNs')
         in_size = self.base_layer.out_size
 
-        self.layers = torch.nn.ModuleList()
-        # TODO: If binary leafs then add special sum layer before sum-product chain
-        if self.leaf_distribution in ['indicator', 'bernoulli']:
-            spatial_sum = SpatialSumLayer(in_size, self.sum_channels, self.sum_dropout)
-            self.layers.append(spatial_sum)
-            in_size = spatial_sum.out_size
-
         # Add the initial pooling layers, if specified
+        self.layers = torch.nn.ModuleList()
         for _ in range(self.n_pooling):
             # Add a spatial product layer (but with strides in order to reduce the dimensionality)
             # Also, use depthwise convolutions for pooling
@@ -124,13 +127,19 @@ class DgcSpn(AbstractModel):
             self.layers.append(spatial_sum)
             in_size = spatial_sum.out_size
 
+        # TODO: If binary leafs then add special sum layer before sum-product chain
+        if self.leaf_distribution in ['indicator', 'bernoulli']:
+            spatial_sum = SpatialSumLayer(in_size, self.sum_channels, self.sum_dropout)
+            self.layers.append(spatial_sum)
+            in_size = spatial_sum.out_size
+
         # Instantiate the inner layers
         depth = int(np.max(np.ceil(np.log2(in_size[1:]))).item())
         for k in range(depth):
             # Add a spatial product layer (with full padding and no strides)
             spatial_prod = SpatialProductLayer(
-                in_size, depthwise=self.depthwise, kernel_size=(2, 2), padding='full',
-                stride=(1, 1), dilation=(2 ** k, 2 ** k), rand_state=self.rand_state
+                in_size, depthwise=self.depthwise, kernel_size=2, padding='full',
+                stride=1, dilation=2**k, rand_state=self.rand_state
             )
             self.layers.append(spatial_prod)
             in_size = spatial_prod.out_size
@@ -142,8 +151,8 @@ class DgcSpn(AbstractModel):
 
         # Add the last product layer
         spatial_prod = SpatialProductLayer(
-            in_size, depthwise=self.depthwise, kernel_size=(2, 2), padding='final',
-            stride=(1, 1), dilation=(2 ** depth, 2 ** depth), rand_state=self.rand_state
+            in_size, depthwise=self.depthwise, kernel_size=2, padding='final',
+            stride=1, dilation=2**depth, rand_state=self.rand_state
         )
         self.layers.append(spatial_prod)
         in_size = spatial_prod.out_size
@@ -162,6 +171,7 @@ class DgcSpn(AbstractModel):
         :param x: The inputs tensor.
         :return: The output of the model.
         """
+        
         # Preprocess the data
         x, inv_log_det_jacobian = self.preprocess(x)
 
@@ -240,3 +250,28 @@ class DgcSpn(AbstractModel):
         # Apply the scale clipper to the base layer, if specified
         if self.optimize_scale and self.leaf_distribution=='gaussian':
             self.scale_clipper(self.base_layer)
+
+if __name__ == "__main__":
+
+    # Print the models summary
+    from torchinfo import summary
+
+    dgcspn = DgcSpn(
+                 in_size=(1, 4),
+                 dequantize=False,
+                 logit=None,
+                 out_classes=1,
+                 n_batch=2,
+                 sum_channels=32,
+                 depthwise=True,
+                 n_pooling=0,
+                 optimize_scale=False,
+                 in_dropout=None,
+                 sum_dropout=None,
+                 quantiles_loc=None,
+                 uniform_loc=None,
+                 rand_state=None,
+                 leaf_distribution='indicator'
+                 )
+
+    summary(dgcspn, (2, 1, 4))

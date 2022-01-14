@@ -67,7 +67,7 @@ def convert_to_graycode(s, bits=8):
     Returns:
         np.ndarray: Graycoded samples
     """
-    
+
     out = ''.join([bin_to_gray(sample, bits)[1][::-1] for sample in s.flatten()])
     out = np.array([float(sample) for sample in out]).reshape(-1, 1)
 

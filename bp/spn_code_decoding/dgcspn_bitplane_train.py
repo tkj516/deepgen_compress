@@ -28,6 +28,13 @@ class MyDataParallel(torch.nn.DataParallel):
         except AttributeError:
             return getattr(self.module, name)
 
+def convert_bin_to_graycode(x, bitplane=1):
+
+    x = x.astype('uint8')
+    graycode = np.bitwise_xor(np.right_shift(x, 1), x)
+
+    return np.bitwise_and(np.right_shift(graycode, bitplane-1), 1)
+
 if __name__ == '__main__':
     # Parse the arguments
     parser = argparse.ArgumentParser(
@@ -66,6 +73,7 @@ if __name__ == '__main__':
                     help='Dataset root directory')
     parser.add_argument('--gpu_id', type=int, default=0, help="GPU device to use")
     parser.add_argument('--data_parallel', action='store_true', default=False, help="Whether to use DataParallel while training.")
+    parser.add_argument('--bitplane', type=int, default=8, help="Bitplane to compress")
     args = parser.parse_args()
 
     # Instantiate a random state, used for reproducibility
@@ -81,6 +89,7 @@ if __name__ == '__main__':
                         torchvision.transforms.Grayscale(),
                         lambda x: torch.tensor(np.array(x)),
                         Reshape(in_size),
+                        lambda x: torch.tensor(convert_bin_to_graycode(x.numpy(), args.bitplane)),
                         lambda x: x.float(),
                     ])
         data_train = torchvision.datasets.MNIST('../../../MNIST', train=True, transform=transform, download=True)
@@ -94,6 +103,7 @@ if __name__ == '__main__':
                         torchvision.transforms.Grayscale(),
                         lambda x: torch.tensor(np.array(x)),
                         Reshape(in_size),
+                        lambda x: torch.tensor(convert_bin_to_graycode(x.numpy(), args.bitplane)),
                         lambda x: x.float(),
                     ])
         data_train = torchvision.datasets.CIFAR10('../../../CIFAR10', train=True, transform=transform, download=True)

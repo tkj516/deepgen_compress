@@ -18,7 +18,7 @@ import torch
 import torch.nn.functional as F
 
 from torch_parallel.code_bp_torch_v2 import CodeBP
-from dgcspn_1d.models.dgcspn import DgcSpn
+from dgcspn_1d.models.dgcspn_cat import DgcSpn
 from spnflow.utils.data import compute_mean_quantiles
 from my_experiments.datasets import MarkovDataset
 from ldpc_generate import pyldpc_generate
@@ -54,8 +54,7 @@ class Source():
         self.device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
 
         # Specify the leaf distribution
-        assert args.binary is True
-        leaf_distribution = "indicator"
+        leaf_distribution = "categorical"
 
         # Compute mean quantiles, if specified
         assert args.quantiles_loc == False
@@ -77,7 +76,8 @@ class Source():
                         quantiles_loc=quantiles_loc,
                         uniform_loc=args.uniform_loc,
                         rand_state=np.random.RandomState(42),
-                        leaf_distribution=leaf_distribution
+                        leaf_distribution=leaf_distribution,
+                        alphabet_size=args.alphabet_size,
                     ).to(self.device)
 
         # TODO:  Please look into this 12/30
@@ -94,16 +94,25 @@ class Source():
 
         # Expect non log beliefs and convert them to log beliefs
         external_log_probs = torch.log(x) - torch.logsumexp(torch.log(x), dim=1, keepdim=True)
+        external_log_probs = external_log_probs.permute(0, 2, 1)
 
         input = float('nan') * torch.ones(1, 1, 1000).to(self.device)
 
         # Compute the base distribution log-likelihoods
-        z = self.model.base_layer(input)
-        z.requires_grad = True
+        indicator = torch.where(torch.isnan(input), torch.zeros(1).to(self.device), input)
+        indicator = torch.log(F.one_hot(indicator.long(), num_classes=self.model.alphabet_size).float())
+
+        # Replace nan values in x with 0 and others with 1 - marginalization
+        indicator.masked_fill_(torch.isnan(input).unsqueeze(-1), 0.0)
+        indicator.requires_grad = True
 
         # If there are external probabilities per node add them here
-        z = z + external_log_probs
-        z = z - torch.logsumexp(z, dim=1, keepdim=True)
+        z = indicator + external_log_probs
+        z = z - torch.logsumexp(z, dim=-1, keepdim=True)
+
+        # Add to logits
+        z = torch.logsumexp(z.unsqueeze(1) + torch.log_softmax(self.model.base_layer.logits, dim=-1), dim=-1)
+        z = torch.sum(z, dim=2)
 
         # Forward through the inner layers
         y = z
@@ -114,19 +123,18 @@ class Source():
         y = self.model.root_layer(y)
 
         # Compute the gradients at distribution leaves
-        (z_grad,) = torch.autograd.grad(y, z, grad_outputs=torch.ones_like(y))  # 1 x alphabet_size x 1000
+        (z_grad,) = torch.autograd.grad(y, indicator, grad_outputs=torch.ones_like(y))  # 1 x alphabet_size x 1000
 
         # Reshape to get message
-        message = z_grad
+        message = z_grad.squeeze(0)
         # If you calculate the derivative the result must bust divided by the external log prob
         # Remember that the derivative at an indicator enforces that the pixel is either 0 or 1
         # But it was actually scaled by the external prob, so remove it to resemble slow message passing
         message = torch.log(message) - external_log_probs
-        message = message.permute(0, 2, 1)  # 1 x 1000 x alphabet_size
         # Replace doped probabilities with correct label
-        message = torch.where(dope_mask == 1, external_log_probs.permute(0, 2, 1), message)
+        message = torch.where(dope_mask == 1, external_log_probs, message)
         # Remove nans after division
-        message = torch.where(torch.isnan(message), external_log_probs.permute(0, 2, 1), message)
+        message = torch.where(torch.isnan(message), external_log_probs, message)
         message = torch.exp(message)
 
         return message
@@ -149,7 +157,7 @@ class SourceCodeBP():
         self.w = w
         self.p = p
         self.doperate = doperate
-        self.alphabet_size = args.n_batches
+        self.alphabet_size = args.alphabet_size
 
         # Number of bits per alphabet
         self.bits = math.ceil(np.log2(self.alphabet_size))
@@ -604,7 +612,7 @@ def compare_source_code_bp():
     parser.add_argument('--dequantize', action='store_true', help='Whether to use dequantization.')
     parser.add_argument('--logit', type=float, default=None, help='The logit value to use for vision datasets.')
     parser.add_argument('--discriminative', action='store_true', help='Whether to use discriminative settings.')
-    parser.add_argument('--n-batches', type=int, default=256, help='The number of input distribution layer batches.')
+    parser.add_argument('--n-batches', type=int, default=32, help='The number of input distribution layer batches.')
     parser.add_argument('--sum-channels', type=int, default=32, help='The number of channels at sum layers.')
     parser.add_argument('--depthwise', action='store_true', help='Whether to use depthwise convolution layers.')
     parser.add_argument('--n-pooling', type=int, default=0, help='The number of initial pooling product layers.')
@@ -635,18 +643,18 @@ def compare_source_code_bp():
     parser.add_argument('--gpu_id', type=int, default=0, help="GPU device to use")
     parser.add_argument("--log_video", action="store_true", help="Whether to log results in a video")
     parser.add_argument('--data_parallel', action='store_true', default=False, help="Whether to use DataParallel while training.")
+    parser.add_argument("--alphabet_size", type=int, default=256, help="Alphabet size")
     args = parser.parse_args()
 
     h = 1
     w = 1000
     rate = args.rate
-    M = args.n_batches
+    M = args.alphabet_size
     bits = math.ceil(np.log2(M))
     N_bits = h * w * bits
 
     # Set some default values
     args.depthwise = True
-    args.binary = True
 
     source_code_bp_spn = SourceCodeBP(
                         H=pyldpc_generate.generate(int(rate * N_bits), N_bits, 3.0, 2, 123),
@@ -690,7 +698,7 @@ def compare_source_code_bp():
                         alpha=0.9,
                         doperate=args.doperate,
                         M=M,
-                        hf=0.1,
+                        hf=0.01,
                         args=args,
                     )
 
