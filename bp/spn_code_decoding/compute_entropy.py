@@ -152,6 +152,9 @@ if __name__ == "__main__":
 
     sep_prot_pgm = [1.19649, 1.18292, 1.14193, 1.03935, 0.71966, 0.33407, 0.20538, 0.16562, 0.1470, 0.14261]
     sep_prot_spn = [1.19490, 1.18673, 1.14894, 1.06529, 0.74532, 0.34625, 0.22401, 0.17977, 0.16053, 0.15176]
+    gzip = [1.030612244897959, 1.030612244897959, 1.030612244897959, 1.0305918367346938, 1.0167551020408163, 0.6528571428571429, 0.4486734693877551, 0.3719387755102041, 0.3307244897959184, 0.30307142857142855]
+    bz2 = [1.6972755102040817, 1.694704081632653, 1.6805102040816324, 1.6221122448979592, 1.362877551020408, 0.905530612244898, 0.677704081632653, 0.5849285714285715, 0.5389285714285713, 0.5144591836734694]
+    jbig2 = [0.99, 0.9907755102040817, 0.9906122448979593, 0.9824285714285713, 0.8459285714285715, 0.43851020408163266, 0.26753061224489794, 0.20369387755102042, 0.17539795918367346, 0.1604795918367347]
 
     sep_threshold_pgm = compute_sep_threshold(sep_prot_pgm)
     sep_threshold_spn = compute_sep_threshold(sep_prot_spn)
@@ -162,18 +165,26 @@ if __name__ == "__main__":
     sep_prot_spn_interp = interpolate.interp1d(q, sep_prot_spn)(q_interp)
     sep_threshold_pgm_interp = interpolate.interp1d(q, sep_threshold_pgm)(q_interp)
     sep_threshold_spn_interp = interpolate.interp1d(q, sep_threshold_spn)(q_interp)
+    gzip_interp = interpolate.interp1d(q, gzip)(q_interp)
+    bz2_interp = interpolate.interp1d(q, bz2)(q_interp)
+    jbig2_interp = interpolate.interp1d(q, jbig2)(q_interp)
 
     fig, ax = plt.subplots()
     ax.plot(stays, hs, 'k-', label='$H_\infty$')
     ax.plot(newstays, hf, 'g-', label='$H_{h, w}$')
-    ax.plot(q_interp, sep_prot_pgm_interp, 'm+--', label='sep-prot PGM')
-    ax.plot(q_interp, sep_prot_spn_interp, 'x--', label='sep-prot SPN')
-    ax.plot(q_interp, sep_threshold_pgm_interp, 'bo-', label='sep-thresh PGM', markerfacecolor="None", ms=5)
-    ax.plot(q_interp, sep_threshold_spn_interp, '^-', label='sep-thresh SPN', markerfacecolor="None", ms=5)
+    ax.plot(q_interp, sep_prot_pgm_interp, 'm+--', label='PGM-SEP-prot')
+    ax.plot(q_interp, sep_prot_spn_interp, 'x--', label='SPN-SEP-prot')
+    ax.plot(q_interp, sep_threshold_pgm_interp, 'bo-', label='PGM-SEP-thresh', markerfacecolor="None", ms=5)
+    ax.plot(q_interp, sep_threshold_spn_interp, '^-', label='SPN-SEP-thresh', markerfacecolor="None", ms=5)
+    ax.plot(q_interp, gzip_interp, '*-', label='GZIP', markerfacecolor="None", ms=5)
+    ax.plot(q_interp, bz2_interp, 'D-', label='BZ2', markerfacecolor="None", ms=5)
+    ax.plot(q_interp, jbig2_interp, 's-', label='JBIG2', markerfacecolor="None", ms=5)
     ax.set_ylabel('output bits per input bits')
     ax.set_xlabel('q')
     ax.set_xlim(None, 0.96)
     ax.legend()
 
     plt.grid(True, linestyle='--')
-    plt.show()
+    # plt.show()
+
+    plt.savefig('ising_comparison.png')

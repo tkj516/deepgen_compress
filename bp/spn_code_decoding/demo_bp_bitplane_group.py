@@ -6,7 +6,6 @@ import os
 import time
 import argparse
 import math
-from PIL import Image
 import numpy as np
 from tqdm import tqdm
 import matplotlib as mpl
@@ -18,7 +17,7 @@ import matplotlib.pyplot as plt
 import torch
 import torchvision
 import torch.nn.functional as F
-from torchvision.datasets import MNIST, CIFAR10, FashionMNIST
+from torchvision.datasets import MNIST, CIFAR10
 
 from torch_parallel.code_bp_torch_v2 import CodeBP
 from dgcspn import DgcSpn
@@ -42,6 +41,14 @@ class MyDataParallel(torch.nn.DataParallel):
             return super().__getattr__(name)
         except AttributeError:
             return getattr(self.module, name)
+
+def convert_bin_to_graycode(x, bitplane_shift=1, group_bits = 3):
+
+    x = x.astype('uint8')
+    graycode = x
+    # graycode = np.bitwise_xor(np.right_shift(x, 1), x)
+
+    return np.bitwise_and(np.right_shift(graycode, bitplane_shift), group_bits)
 
 ##################################################################################
 # SOURCE-CODE BELIEF PROPAGATION USING SUM-PRODUCT NETWORK (SPN)
@@ -170,16 +177,15 @@ class SourceCodeBP():
         # Setup the transforms
         in_size = (1, self.h, self.w)
         self.transform = torchvision.transforms.Compose([
-                            torchvision.transforms.Grayscale(),
-                            lambda x: torch.tensor(np.array(x)),
-                            Reshape(in_size),
-                            lambda x: x.float(),
-                        ])
+                        torchvision.transforms.Grayscale(),
+                        lambda x: torch.tensor(np.array(x)),
+                        Reshape(in_size),
+                        lambda x: torch.tensor(convert_bin_to_graycode(x.numpy(), args.bitplane_shift, args.group_bits)),
+                        lambda x: x.float(),
+                    ])
 
         if args.dataset == 'mnist':
             self.dataset = MNIST('../../../MNIST', train=False, transform=self.transform)
-        elif args.dataset == 'fashion-mnist':
-            self.dataset = FashionMNIST('../../../FashionMNIST', train=False, transform=self.transform)
         elif args.dataset == 'cifar10':
             self.dataset = CIFAR10('../../../CIFAR10', train=False, transform=self.transform)
         else:
@@ -267,7 +273,6 @@ class SourceCodeBP():
         max_ll_old = torch.tensor(float('nan') * np.ones((1, self.h * self.w))).to(self.device)
 
         self.video = []
-        self.video = [torch.argmax(self.npot, -1).reshape(1, 1, 1, self.h, self.w)]
 
         # Perform multiple iterations of belief propagation
         for i in range(num_iter):
@@ -341,15 +346,17 @@ def test_source_code_bp_spn():
     parser.add_argument('--weight-decay', type=float, default=0.0, help='L2 regularization factor.')
     parser.add_argument('--binary', action='store_true', default=False, help='Use binary model and binarize dataset')
     parser.add_argument('--continue_checkpoint', default=None, help='Checkpoint to continue training from')
-    parser.add_argument('--dataset', type=str, choices=['mnist', 'fashion-mnist', 'cifar10'], default='cifar10', help='Dataset to use for training')
+    parser.add_argument('--dataset', type=str, default='cifar10', help='Dataset to use for training')
     parser.add_argument('--root_dir', type=str, default='/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/spn_code_decoding/markov_test/markov_hf_001',
                     help='Dataset root directory')
     parser.add_argument('--gpu_id', type=int, default=0, help="GPU device to use")
     parser.add_argument("--log_video", action="store_true", help="Whether to log results in a video")
     parser.add_argument('--data_parallel', action='store_true', default=False, help="Whether to use DataParallel while training.")
+    parser.add_argument('--bitplane_shift', type=int, default=4, help="Bitplane to compress")
+    parser.add_argument('--group_bits', type=int, default=15, help="Bitplane to compress")
     args = parser.parse_args()
 
-    if args.dataset in  ['mnist', 'fashion-mnist']:
+    if args.dataset == 'mnist':
         h = w = 28
     elif args.dataset == 'cifar10':
         h = w = 32
@@ -392,14 +399,6 @@ def test_source_code_bp_spn():
 
     # Decode the sample
     _, _, video = source_code_bp.decode(num_iter=100, verbose=True, writer=writer)
-    print(video.shape)
-
-    if args.log_video:
-        os.makedirs(f'bp_results_images_gray/{args.dataset}/{timestamp}/spn')
-        numpy_image = video.squeeze().detach().cpu().numpy().repeat(4, axis=-1).repeat(4, axis=-2)
-        for i in range(numpy_image.shape[0]):
-            im = Image.fromarray(255*numpy_image[i, ...]).convert('RGB')
-            im.save(f'bp_results_images_gray/{args.dataset}/{timestamp}/spn/{i}.png')
 
     if args.log_video:
         writer.add_video(f'convergence_video', video, fps=1, global_step=0)

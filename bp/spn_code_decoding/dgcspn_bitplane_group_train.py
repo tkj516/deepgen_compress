@@ -28,6 +28,14 @@ class MyDataParallel(torch.nn.DataParallel):
         except AttributeError:
             return getattr(self.module, name)
 
+def convert_bin_to_graycode(x, bitplane_shift=1, group_bits=3):
+
+    x = x.astype('uint8')
+    # graycode = np.bitwise_xor(np.right_shift(x, 1), x)
+    graycode=x
+
+    return np.bitwise_and(np.right_shift(graycode, bitplane_shift), group_bits)
+
 if __name__ == '__main__':
     # Parse the arguments
     parser = argparse.ArgumentParser(
@@ -36,7 +44,7 @@ if __name__ == '__main__':
     parser.add_argument('--dequantize', action='store_true', help='Whether to use dequantization.')
     parser.add_argument('--logit', type=float, default=None, help='The logit value to use for vision datasets.')
     parser.add_argument('--discriminative', action='store_true', help='Whether to use discriminative settings.')
-    parser.add_argument('--n-batches', type=int, default=256, help='The number of input distribution layer batches.')
+    parser.add_argument('--n-batches', type=int, default=4, help='The number of input distribution layer batches.')
     parser.add_argument('--sum-channels', type=int, default=128, help='The number of channels at sum layers.')
     parser.add_argument('--depthwise', action='store_true', help='Whether to use depthwise convolution layers.')
     parser.add_argument('--n-pooling', type=int, default=0, help='The number of initial pooling product layers.')
@@ -61,11 +69,13 @@ if __name__ == '__main__':
     parser.add_argument('--weight-decay', type=float, default=0.0, help='L2 regularization factor.')
     parser.add_argument('--binary', action='store_true', default=False, help='Use binary model and binarize dataset')
     parser.add_argument('--continue_checkpoint', default=None, help='Checkpoint to continue training from')
-    parser.add_argument('--dataset', type=str, choices=['mnist', 'fashion-mnist', 'cifar10'], default='mnist', help='Dataset to use for training')
+    parser.add_argument('--dataset', type=str, default='mnist', help='Dataset to use for training')
     parser.add_argument('--root_dir', type=str, default='/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/datasets/ising_28_05_09_75000',
                     help='Dataset root directory')
     parser.add_argument('--gpu_id', type=int, default=0, help="GPU device to use")
     parser.add_argument('--data_parallel', action='store_true', default=False, help="Whether to use DataParallel while training.")
+    parser.add_argument('--bitplane_shift', type=int, default=8, help="Bitplane to compress")
+    parser.add_argument('--group_bits', type=int, default=8, help="Bitplane to compress")
     args = parser.parse_args()
 
     # Instantiate a random state, used for reproducibility
@@ -81,6 +91,7 @@ if __name__ == '__main__':
                         torchvision.transforms.Grayscale(),
                         lambda x: torch.tensor(np.array(x)),
                         Reshape(in_size),
+                        lambda x: torch.tensor(convert_bin_to_graycode(x.numpy(), args.bitplane_shift, args.group_bits)),
                         lambda x: x.float(),
                     ])
         data_train = torchvision.datasets.MNIST('../../../MNIST', train=True, transform=transform, download=True)
@@ -88,26 +99,13 @@ if __name__ == '__main__':
         n_val = int(0.1 * len(data_train))
         n_train = len(data_train) - n_val
         data_train, data_val = torch.utils.data.random_split(data_train, [n_train, n_val])
-    if args.dataset == 'fashion-mnist':
-        # Load the Fashion MNIST dataset
-        in_size = (1, 28, 28)
-        transform = torchvision.transforms.Compose([
-                        torchvision.transforms.Grayscale(),
-                        lambda x: torch.tensor(np.array(x)),
-                        Reshape(in_size),
-                        lambda x: x.float(),
-                    ])
-        data_train = torchvision.datasets.FashionMNIST('../../../FashionMNIST', train=True, transform=transform, download=True)
-        data_test = torchvision.datasets.FashionMNIST('../../../FashionMNIST', train=False, transform=transform, download=True)
-        n_val = int(0.1 * len(data_train))
-        n_train = len(data_train) - n_val
-        data_train, data_val = torch.utils.data.random_split(data_train, [n_train, n_val])        
     elif args.dataset == 'cifar10':
         in_size = (1, 32, 32)
         transform = torchvision.transforms.Compose([
                         torchvision.transforms.Grayscale(),
                         lambda x: torch.tensor(np.array(x)),
                         Reshape(in_size),
+                        lambda x: torch.tensor(convert_bin_to_graycode(x.numpy(), args.bitplane_shift, args.group_bits)),
                         lambda x: x.float(),
                     ])
         data_train = torchvision.datasets.CIFAR10('../../../CIFAR10', train=True, transform=transform, download=True)
@@ -125,7 +123,9 @@ if __name__ == '__main__':
         out_classes = 1
 
     # Create the results directory
-    if args.dataset in ['mnist', 'fashion-mnist', 'cifar10']:
+    if args.dataset == 'mnist':
+        directory = os.path.join('dgcspn', args.dataset)
+    elif args.dataset == 'cifar10':
         directory = os.path.join('dgcspn', args.dataset)
     else:
         directory = os.path.join('dgcspn', os.path.basename(args.root_dir))
