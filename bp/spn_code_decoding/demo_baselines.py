@@ -20,6 +20,7 @@ import bz2
 
 import torch
 import torchvision
+from PIL import Image
 from torchvision.datasets import FashionMNIST, MNIST, CIFAR10
 
 from spnflow.torch.transforms import Reshape
@@ -33,12 +34,54 @@ parser.add_argument('--root_dir', type=str, default='/fs/data/tejasj/Masters_The
                     help='Dataset root directory')
 parser.add_argument('--num_avg', type=int, default=1000, help='Number of examples to use for averaging')
 parser.add_argument('--phase', type=str, default='test', help='Phase option for Ising dataset')
-parser.add_argument('--compressor', type=str, choices=['gzip', 'bz2'], required=True, help='Choice of baseline compression system')
+parser.add_argument('--compressor', type=str, choices=['gzip', 'bz2', 'webp', 'png', 'jp2'], required=True, help='Choice of baseline compression system')
 parser.add_argument('--binary', action='store_true', default=False, help='Whether to binarize dataset')
 args = parser.parse_args()
 
 now = datetime.now()
 dt_string = now.strftime("%d-%m-%Y_%H-%M-%S")
+
+class WebP:
+
+    def __init__(self):
+
+        pass
+
+    def compress(self, image):
+        # Convert the image to a PIL image
+        image = Image.fromarray(image)
+        # Perform compression
+        image.save('test.webp', lossless=True, quality=100, method=6)
+
+        return os.stat('test.webp').st_size
+
+class PNG:
+
+    def __init__(self):
+
+        pass
+
+    def compress(self, image):
+        # Convert the image to a PIL image
+        image = Image.fromarray(image)
+        # Perform compression
+        image.save('test.png', optimize=True)
+
+        return os.stat('test.png').st_size
+
+class JP2:
+
+    def __init__(self):
+
+        pass
+
+    def compress(self, image):
+        # Convert the image to a PIL image
+        image = Image.fromarray(image)
+        # Perform compression
+        image.save('test.jp2', tile_size=tuple(image.size), num_resolutions=int(np.log(image.size[0]))+1, irreversible=False) 
+
+        return os.stat('test.jp2').st_size
 
 class Demo():
 
@@ -102,10 +145,16 @@ class Demo():
             self.compressor = gzip
         elif args.compressor == 'bz2':
             self.compressor = bz2
+        elif args.compressor == 'webp':
+            self.compressor = WebP()
+        elif args.compressor == 'png':
+            self.compressor = PNG()
+        elif args.compressor == 'jp2':
+            self.compressor = JP2()
         else:
             raise NotImplementedError("Basline compressor not implemented.")
 
-    def compute_dataset_rate(self):
+    def compute_dataset_rate_universal(self):
         '''
         Given a dataset compute the average, minimum and maximum rate
         required for decoding.
@@ -169,10 +218,73 @@ class Demo():
         with open(filepath, 'w') as file:
             json.dump(results, file, indent=4)
 
+    def compute_dataset_rate_image(self):
+        '''
+        Given a dataset compute the average, minimum and maximum rate
+        required for decoding.
+        '''
+
+        # Create the dataloader
+        dataloader = torch.utils.data.DataLoader(
+                    self.dataset, batch_size=1, shuffle=False, num_workers=4
+                    )
+
+        # Loop through all the images in the dataset log its rate
+        rates = []
+        min_rate = 2
+        max_rate = 0
+
+        if args.num_avg == -1:
+            args.num_avg = len(self.dataset)
+
+        # Get the size of empty file
+        empty_size = self.compressor.compress(np.uint8(np.array([[0]])))
+
+        with tqdm(total=args.num_avg) as pbar:
+            for sample, _ in dataloader:
+                
+                # Flatten input and convert to bytes object
+                x = sample.numpy().astype('uint8').squeeze()
+                rate = (self.compressor.compress(x) - empty_size) / len(x.reshape(-1, ))
+
+                # Perform rate logging on the dataset
+                rates.append(rate)
+                min_rate = min(min_rate, rates[-1])
+                max_rate = max(max_rate, rates[-1])
+
+                pbar.update(1)
+
+                if len(rates) == args.num_avg:
+                    break
+
+        # Log into files here
+        results = {}
+        avg_rate = np.average(rates)
+        results['rates'] = rates
+        results['avg_rate'] = avg_rate
+        results['min_rate'] = min_rate
+        results['max_rate'] = max_rate
+
+        with open('temp.json', 'w') as file:
+            json.dump(results, file, indent=4)
+
+        print(f'Avg Rate: {avg_rate}, Min Rate: {min_rate}, Max Rate: {max_rate}')
+
+        # Create binary suffix
+        suffix = '_bin' if args.binary else ''
+        filepath = os.path.join('demo_gray_baseline', args.dataset, args.compressor + '_' + args.phase, os.path.basename(args.root_dir) + suffix + '.json')
+        os.makedirs(os.path.join('demo_gray_baseline', args.dataset, args.compressor + '_' + args.phase), exist_ok=True)
+        with open(filepath, 'w') as file:
+            json.dump(results, file, indent=4)
+
 def main():
 
     demo = Demo()
-    demo.compute_dataset_rate()
+
+    if args.compressor in ['gzip', 'bz2']:
+        demo.compute_dataset_rate_universal()
+    else:
+        demo.compute_dataset_rate_image()
 
 if __name__ == '__main__':
     main()

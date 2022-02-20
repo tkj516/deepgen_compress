@@ -11,6 +11,9 @@ tmp/*
 # ignored files
 version.py
 
+# ignored files with prefix
+events.out.tfevents*
+
 # ignored files with suffix
 *.html
 *.png
@@ -19,6 +22,10 @@ version.py
 *.gif
 *.pth
 *.zip
+*.npy
+*.json
+*.pt
+*.gz
 
 # template
 

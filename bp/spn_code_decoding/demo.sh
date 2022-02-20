@@ -32,29 +32,29 @@ checkpoint_050="dgcspn/ising_0.5_{0.50}_200000/generative/model_2021-05-11_12:57
 
 # Ising
 
-# 0.95
-# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_095" --phase test --source_type pgm --stay 0.95 --num_avg $1 --device $2
-# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_095" --phase test --source_type spn --checkpoint "$checkpoint_095" --num_avg $1 --device $2
+0.95
+python demo.py --binary --depthwise --dataset ising --root_dir "$ising_095" --phase test --source_type pgm --stay 0.95 --num_avg $1 --device $2
+python demo.py --binary --depthwise --dataset ising --root_dir "$ising_095" --phase test --source_type spn --checkpoint "$checkpoint_095" --num_avg $1 --device $2
 
-# # 0.90
-# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_090" --phase test --source_type pgm --stay 0.90 --num_avg $1 --device $2
-# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_090" --phase test --source_type spn --checkpoint "$checkpoint_090" --num_avg $1 --device $2
+# 0.90
+python demo.py --binary --depthwise --dataset ising --root_dir "$ising_090" --phase test --source_type pgm --stay 0.90 --num_avg $1 --device $2
+python demo.py --binary --depthwise --dataset ising --root_dir "$ising_090" --phase test --source_type spn --checkpoint "$checkpoint_090" --num_avg $1 --device $2
 
-# # 0.85
-# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_085" --phase test --source_type pgm --stay 0.85 --num_avg $1 --device $2
-# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_085" --phase test --source_type spn --checkpoint "$checkpoint_085" --num_avg $1 --device $2
+# 0.85
+python demo.py --binary --depthwise --dataset ising --root_dir "$ising_085" --phase test --source_type pgm --stay 0.85 --num_avg $1 --device $2
+python demo.py --binary --depthwise --dataset ising --root_dir "$ising_085" --phase test --source_type spn --checkpoint "$checkpoint_085" --num_avg $1 --device $2
 
-# # 0.80
-# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_080" --phase test --source_type pgm --stay 0.80 --num_avg $1 --device $2
-# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_080" --phase test --source_type spn --checkpoint "$checkpoint_080" --num_avg $1 --device $2
+# 0.80
+python demo.py --binary --depthwise --dataset ising --root_dir "$ising_080" --phase test --source_type pgm --stay 0.80 --num_avg $1 --device $2
+python demo.py --binary --depthwise --dataset ising --root_dir "$ising_080" --phase test --source_type spn --checkpoint "$checkpoint_080" --num_avg $1 --device $2
 
-# # 0.75
-# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_075" --phase test --source_type pgm --stay 0.75 --num_avg $1 --device $2
-# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_075" --phase test --source_type spn --checkpoint "$checkpoint_075" --num_avg $1 --device $2
+# 0.75
+python demo.py --binary --depthwise --dataset ising --root_dir "$ising_075" --phase test --source_type pgm --stay 0.75 --num_avg $1 --device $2
+python demo.py --binary --depthwise --dataset ising --root_dir "$ising_075" --phase test --source_type spn --checkpoint "$checkpoint_075" --num_avg $1 --device $2
 
-# # 0.70
-# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_070" --phase test --source_type pgm --stay 0.70 --num_avg $1 --device $2
-# python demo.py --binary --depthwise --dataset ising --root_dir "$ising_070" --phase test --source_type spn --checkpoint "$checkpoint_070" --num_avg $1 --device $2
+# 0.70
+python demo.py --binary --depthwise --dataset ising --root_dir "$ising_070" --phase test --source_type pgm --stay 0.70 --num_avg $1 --device $2
+python demo.py --binary --depthwise --dataset ising --root_dir "$ising_070" --phase test --source_type spn --checkpoint "$checkpoint_070" --num_avg $1 --device $2
 
 # # 0.65
 python demo.py --binary --depthwise --dataset ising --root_dir "$ising_065" --phase test --source_type pgm --stay 0.65 --num_avg $1 --device $2
@@ -73,5 +73,5 @@ python demo.py --binary --depthwise --dataset ising --root_dir "$ising_050" --ph
 python demo.py --binary --depthwise --dataset ising --root_dir "$ising_050" --phase test --source_type spn --checkpoint "$checkpoint_050" --num_avg $1 --device $2
 
 # MNIST
-# python demo.py --binary --depthwise --dataset mnist --root_dir ../../../MNIST --phase test --source_type spn --checkpoint dgcspn/mnist/generative/model_2021-05-06_11:46:44.pt --num_avg $1
+python demo.py --binary --depthwise --dataset mnist --root_dir ../../../MNIST --phase test --source_type spn --checkpoint dgcspn/mnist/generative/model_2021-05-06_11:46:44.pt --num_avg $1
 
