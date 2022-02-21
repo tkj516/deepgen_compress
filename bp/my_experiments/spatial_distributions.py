@@ -122,9 +122,84 @@ class SpatialIndicatorLayer(torch.nn.Module):
 
         return indicators
 
+
+class SpatialDiscreteLogisticLayer(torch.nn.Module):
+    """Spatial Discrete Logistic input layer."""
+    def __init__(self, in_size, out_channels, inverse_width=2**8):
+        """
+        Initialize a Spatial Bernoulli input layer.
+
+        :param in_size: The size of the input tensor.
+        :param out_channels: The number of output channels.
+        """
+        super(SpatialDiscreteLogisticLayer, self).__init__()
+        self.in_size = in_size
+        self.out_channels = out_channels
+        self.inv_width = inverse_width
+
+        # Insantiate epsilon
+        self.eps = 1e-5
+
+        # Instantiate the mean and scale parameters
+        self.mean = torch.nn.Parameter(
+            torch.rand(out_channels, *self.in_size),
+            requires_grad = True,
+        )
+        self.log_scale = torch.nn.Parameter(
+            torch.rand(out_channels, *self.in_size),
+            requires_grad = True,
+        )
+
+        # Initialize some useful constants
+        self.register_buffer('zero', torch.zeros(1))
+        self.register_buffer('nan', torch.tensor(np.nan))
+
+    @property
+    def in_channels(self):
+        return self.in_size[0]
+
+    @property
+    def in_height(self):
+        return self.in_size[1]
+
+    @property
+    def in_width(self):
+        return self.in_size[2]
+
+    @property
+    def out_size(self):
+        return self.out_channels, self.in_height, self.in_width
+
+    def log_prob(self, x):
+
+        scale = torch.exp(self.log_scale).unsqueeze(0)
+        mean = self.mean.unsqueeze(0)
+        prob = (torch.sigmoid((x + 0.5 / self.inv_width - mean) / scale) 
+                - torch.sigmoid((x - 0.5 / self.inv_width - mean) / scale))
+            
+        return torch.log(prob)
+
+    def forward(self, x):
+        """
+        Evaluate the layer given some inputs.
+
+        :param x: The inputs.
+        :return: The tensor result of the layer.
+        """
+
+        # Compute the log-likelihoods
+        x = torch.unsqueeze(x, dim=1) / self.inv_width
+        x = self.log_prob(x)
+
+        # Marginalize missing values (denoted with NaNs)
+        x = torch.where(torch.isnan(x), self.zero, x)
+
+        # This implementation assumes independence between channels of the same pixel random variables
+        return torch.sum(x, dim=2)
+
 if __name__ == "__main__":
 
-    x = (torch.rand(2, 1, 3, 3) > 0.5).float()
+    x = (torch.rand(2, 1, 28, 28) > 0.5).float()
     x[..., -1, :] = float('nan')
 
     indicator_leaf = SpatialIndicatorLayer(in_size=(1, 28, 28), out_channels=2)
@@ -132,3 +207,9 @@ if __name__ == "__main__":
     print(x)
     print(indicator_leaf(x))
     print(torch.sum(indicator_leaf(x), dim=1))
+
+    discrete_logistic_leaf = SpatialDiscreteLogisticLayer(in_size=(1, 28, 28), out_channels=2, inverse_width=2)
+    
+    print(x)
+    print(discrete_logistic_leaf(x))
+    print(torch.sum(discrete_logistic_leaf(x), dim=1))
