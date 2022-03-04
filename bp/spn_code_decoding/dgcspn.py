@@ -5,9 +5,9 @@ import torch
 import numpy as np
 
 from spnflow.torch.models.abstract import AbstractModel
-from spnflow.torch.layers.dgcspn import SpatialGaussianLayer, SpatialProductLayer, SpatialSumLayer, SpatialRootLayer
+from spnflow.torch.layers.dgcspn import SpatialProductLayer, SpatialSumLayer, SpatialRootLayer
 from spnflow.torch.constraints import ScaleClipper
-from my_experiments.spatial_distributions import SpatialIndicatorLayer
+from my_experiments.spatial_distributions import SpatialIndicatorLayer, SpatialDiscreteLogisticLayer, SpatialGaussianLayer
 
 
 class DgcSpn(AbstractModel):
@@ -27,7 +27,8 @@ class DgcSpn(AbstractModel):
                  quantiles_loc=None,
                  uniform_loc=None,
                  rand_state=None,
-                 leaf_distribution='gaussian'
+                 leaf_distribution='gaussian',
+                 inverse_width=2**8,
                  ):
         """
         Initialize a SpatialSpn.
@@ -74,6 +75,8 @@ class DgcSpn(AbstractModel):
 
         # TODO: Is the input distribution continuous or discrete
         self.leaf_distribution = leaf_distribution
+        # TODO: Parameter for discretized logistic function
+        self.inverse_width = inverse_width
 
         self.quantiles_loc = None
         if quantiles_loc is not None:
@@ -88,15 +91,18 @@ class DgcSpn(AbstractModel):
             self.base_layer = SpatialGaussianLayer(
                 self.in_size,
                 self.n_batch,
-                self.optimize_scale,
-                self.in_dropout,
-                self.quantiles_loc,
-                self.uniform_loc
+                self.inverse_width,
             )
         elif self.leaf_distribution == 'indicator':
             self.base_layer = SpatialIndicatorLayer(
                 self.in_size,
                 self.n_batch
+            )
+        elif self.leaf_distribution == 'discretized_logistic':
+            self.base_layer = SpatialDiscreteLogisticLayer(
+                self.in_size,
+                self.n_batch,
+                self.inverse_width,
             )
         else:
             raise NotImplementedError('Distribution is not implemented for DGC-SPNs')
@@ -238,5 +244,7 @@ class DgcSpn(AbstractModel):
         Apply the constraints specified by the model.
         """
         # Apply the scale clipper to the base layer, if specified
-        if self.optimize_scale and self.leaf_distribution=='gaussian':
-            self.scale_clipper(self.base_layer)
+        # if self.optimize_scale and self.leaf_distribution=='gaussian':
+        #     self.scale_clipper(self.base_layer)
+
+        pass  # TODO: Removed on 02/26/2022

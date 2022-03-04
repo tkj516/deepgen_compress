@@ -93,7 +93,7 @@ class SpatialGaussianLayer(torch.nn.Module):
             )
 
         # Instantiate the multi-batch normal distribution
-        self.distribution = torch.distributions.Normal(self.loc, self.scale)
+        self.distribution = torch.distributions.Normal(self.loc, self.scale, validate_args=True)
 
         # Initialize some useful constants
         self.register_buffer('zero', torch.zeros(1))

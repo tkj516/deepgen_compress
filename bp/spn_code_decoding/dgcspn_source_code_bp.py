@@ -160,15 +160,25 @@ class Source():
         z = z - torch.logsumexp(z, dim=1, keepdim=True)
 
         # Forward through the inner layers
+        # y = z
+        # for layer in self.model.layers:
+        #     y = layer(y)
+
+        z = self.model.layers[0](z)
         y = z
-        for layer in self.model.layers:
-            y = layer(y)
+        for i in range(1, len(self.model.layers)):
+            y = self.model.layers[i](y)
 
         # Forward through the root layer
         y = self.model.root_layer(y)
 
         # Compute the gradients at distribution leaves
         (z_grad,) = torch.autograd.grad(y, z, grad_outputs=torch.ones_like(y))
+
+        # Compute probabilities
+        logits = self.model.layers[0].weight.log_softmax(dim=1).unsqueeze(0)
+        z_grad = z_grad.unsqueeze(2) * torch.exp(logits) * torch.exp(external_log_probs) / torch.exp(z.unsqueeze(2))
+        z_grad = z_grad.sum(dim=1)
 
         # Reshape to get message
         message = z_grad.squeeze(0).reshape(2, 784).permute(1, 0)

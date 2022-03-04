@@ -58,8 +58,8 @@ class Source():
         self.device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
 
         # Specify the leaf distribution
-        assert args.binary is True
-        leaf_distribution = "indicator"
+        assert args.binary is True or args.logistic is True
+        self.leaf_distribution = "indicator" if args.binary else "discretized_logistic"
 
         # Compute mean quantiles, if specified
         assert args.quantiles_loc == False
@@ -85,7 +85,8 @@ class Source():
                         quantiles_loc=quantiles_loc,
                         uniform_loc=args.uniform_loc,
                         rand_state=np.random.RandomState(42),
-                        leaf_distribution=leaf_distribution
+                        leaf_distribution=self.leaf_distribution,
+                        inverse_width=2**8,
                     ).to(self.device)
 
         # TODO:  Please look into this 12/30
@@ -106,24 +107,38 @@ class Source():
         input = float('nan') * torch.ones(1, 1, self.h, self.w).to(self.device)
 
         # Compute the base distribution log-likelihoods
-        z = self.model.base_layer(input)
+        # z = self.model.base_layer(input)
+        # z.requires_grad = True
+        z = torch.zeros(1, 1, self.h, self.w).to(self.device)
         z.requires_grad = True
 
         # If there are external probabilities per node add them here
         z = z + external_log_probs.reshape(1, -1, self.h, self.w)
         z = z - torch.logsumexp(z, dim=1, keepdim=True)
 
+        # Get the base layer logits
+        grid = torch.arange(0, 2**8).reshape(1, -1, 1, 1)
+        grid = grid.repeat(self.model.base_layer.out_channels, 1, self.model.base_layer.in_height, self.model.base_layer.in_width).to(self.device)
+        logits = self.model.base_layer.log_prob(grid / 2**8).squeeze(0) 
+        # print(logits.isnan().float().nonzero()[:1000, 1])
+
+        # Implement logistic as a sum node
+        # w = torch.log_softmax(logits, dim=1)
+        w = logits
+        z = torch.unsqueeze(z, dim=1)
+        z = torch.logsumexp(z + w, dim=2)
+
         # TODO: Uncomment for original version
         # Forward through the inner layers
-        # y = z
-        # for layer in self.model.layers:
-        #     y = layer(y)
+        y = z
+        for layer in self.model.layers:
+            y = layer(y)
 
         # TODO: New version -- Comment for old version
-        z = self.model.layers[0](z)
-        y = z
-        for i in range(1, len(self.model.layers)):
-            y = self.model.layers[i](y)
+        # z = self.model.layers[0](z)
+        # y = z
+        # for i in range(1, len(self.model.layers)):
+        #     y = self.model.layers[i](y)
 
         # Forward through the root layer
         y = self.model.root_layer(y)
@@ -133,8 +148,7 @@ class Source():
 
         # TODO: Comment to revert to old version
         # Compute probabilities
-        logits = self.model.layers[0].weight.log_softmax(dim=1).unsqueeze(0)
-        z_grad = z_grad.unsqueeze(2) * torch.exp(logits) #* torch.exp(external_log_probs.reshape(1, -1, self.h, self.w)) / torch.exp(z.unsqueeze(2))
+        z_grad = z_grad.unsqueeze(2) * torch.exp(w) * torch.exp(external_log_probs.reshape(1, -1, self.h, self.w)) / torch.exp(z.unsqueeze(2))
         z_grad = z_grad.sum(dim=1)
 
         # Reshape to get message
@@ -143,7 +157,7 @@ class Source():
         # If you calculate the derivative the result must bust divided by the external log prob
         # Remember that the derivative at an indicator enforces that the pixel is either 0 or 1
         # But it was actually scaled by the external prob, so remove it to resemble slow message passing
-        message = torch.log(message) #- external_log_probs
+        message = torch.log(message) - external_log_probs
         message = message.permute(0, 2, 1)  # 1 x (h*w) x alphabet_size
         # Replace doped probabilities with correct label
         message = torch.where(dope_mask == 1, external_log_probs.permute(0, 2, 1), message)
@@ -171,7 +185,7 @@ class SourceCodeBP():
         self.w = w
         self.p = p
         self.doperate = doperate
-        self.alphabet_size = args.n_batches
+        self.alphabet_size = 2**8
 
         # Number of bits per alphabet
         self.bits = math.ceil(np.log2(self.alphabet_size))
@@ -353,6 +367,7 @@ def test_source_code_bp_spn():
     parser.add_argument('--patience', type=int, default=30, help='The epochs patience used for early stopping.')
     parser.add_argument('--weight-decay', type=float, default=0.0, help='L2 regularization factor.')
     parser.add_argument('--binary', action='store_true', default=False, help='Use binary model and binarize dataset')
+    parser.add_argument('--logistic', action='store_true', default=False, help='Use discretized logistic leaves')
     parser.add_argument('--continue_checkpoint', default=None, help='Checkpoint to continue training from')
     parser.add_argument('--dataset', type=str, choices=['mnist', 'fashion-mnist', 'cifar10'], default='cifar10', help='Dataset to use for training')
     parser.add_argument('--root_dir', type=str, default='/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/spn_code_decoding/markov_test/markov_hf_001',
@@ -370,13 +385,12 @@ def test_source_code_bp_spn():
         raise NotImplementedError("Decoding not implemented for this dataset")
 
     rate = args.rate
-    M = args.n_batches
+    M = 2**8
     bits = math.ceil(np.log2(M))
     N_bits = h * w * bits
 
     # Set some default values
     args.depthwise = True
-    args.binary = True
 
     source_code_bp = SourceCodeBP(
                         H=pyldpc_generate.generate(int(rate * N_bits), N_bits, 3.0, 2, 123),

@@ -28,6 +28,15 @@ class MyDataParallel(torch.nn.DataParallel):
         except AttributeError:
             return getattr(self.module, name)
 
+class NanTransform():
+
+    def __call__(self, x):
+
+        mask = torch.rand(*x.shape).to(x.device) > 0.9
+        x = torch.where(mask == True, torch.tensor(float('nan')), x)
+
+        return x
+
 if __name__ == '__main__':
     # Parse the arguments
     parser = argparse.ArgumentParser(
@@ -59,7 +68,9 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=1000, help='The number of epochs.')
     parser.add_argument('--patience', type=int, default=30, help='The epochs patience used for early stopping.')
     parser.add_argument('--weight-decay', type=float, default=0.0, help='L2 regularization factor.')
-    parser.add_argument('--binary', action='store_true', default=False, help='Use binary model and binarize dataset')
+    parser.add_argument('--binary', action='store_true', default=False, help='Use indicator leaves')
+    parser.add_argument('--logistic', action='store_true', default=False, help='Use discretized logistic leaves')
+    parser.add_argument('--gaussian', action='store_true', default=False, help='Use gaussian leaves')
     parser.add_argument('--continue_checkpoint', default=None, help='Checkpoint to continue training from')
     parser.add_argument('--dataset', type=str, choices=['mnist', 'fashion-mnist', 'cifar10'], default='mnist', help='Dataset to use for training')
     parser.add_argument('--root_dir', type=str, default='/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/datasets/ising_28_05_09_75000',
@@ -109,6 +120,7 @@ if __name__ == '__main__':
                         lambda x: torch.tensor(np.array(x)),
                         Reshape(in_size),
                         lambda x: x.float(),
+                        NanTransform()
                     ])
         data_train = torchvision.datasets.CIFAR10('../../../CIFAR10', train=True, transform=transform, download=True)
         data_test = torchvision.datasets.CIFAR10('../../../CIFAR10', train=False, transform=transform, download=True)
@@ -159,9 +171,14 @@ if __name__ == '__main__':
         quantiles_loc = None
 
     # Specify the leaf distribution
-    leaf_distribution = 'gaussian'
     if args.binary:
         leaf_distribution = 'indicator'
+    elif args.logistic:
+        leaf_distribution = 'discretized_logistic'
+    elif args.gaussian:
+        leaf_distribution = 'gaussian'
+    else:
+        raise ValueError('No supported leaf distribution specified!')
 
     # Build the model
     model = DgcSpn(
@@ -179,7 +196,8 @@ if __name__ == '__main__':
         quantiles_loc=quantiles_loc,
         uniform_loc=args.uniform_loc,
         rand_state=rand_state,
-        leaf_distribution=leaf_distribution
+        leaf_distribution=leaf_distribution,
+        inverse_width=2**8,
     )
 
     # Continue training if specified

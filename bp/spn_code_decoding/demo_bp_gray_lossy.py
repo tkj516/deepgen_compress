@@ -1,4 +1,6 @@
 import sys
+
+from markov_test.utils import msg_graycode_to_int
 sys.path.append('..')
 sys.path.append('../..')
 
@@ -29,6 +31,7 @@ from ldpc_generate import pyldpc_generate
 
 from spn_code_decoding.markov_test.utils import *
 from spn_code_decoding.markov_test.markov_source import *
+from lossy_utils.utils import *
 
 from tensorboardX import SummaryWriter
 
@@ -51,19 +54,10 @@ class Source():
 
     def __init__(self, 
                 in_size=(1, 32, 32),
-                out_classes=1,
                 args=None):
 
         # Specify the device
         self.device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
-
-        # Specify the leaf distribution
-        assert args.binary is True
-        leaf_distribution = "indicator"
-
-        # Compute mean quantiles, if specified
-        assert args.quantiles_loc == False
-        quantiles_loc = None
 
         # Store some parameters
         self.h = in_size[1]
@@ -72,20 +66,20 @@ class Source():
         # Load the model
         self.model = DgcSpn(
                         in_size,
-                        dequantize=args.dequantize,
-                        logit=args.logit,
-                        out_classes=out_classes,
+                        dequantize=False,
+                        logit=None,
+                        out_classes=1,
                         n_batch=args.n_batches,
                         sum_channels=args.sum_channels,
                         depthwise=args.depthwise,
-                        n_pooling=args.n_pooling,
-                        optimize_scale=args.optimize_scale,
-                        in_dropout=args.in_dropout,
-                        sum_dropout=args.sum_dropout,
-                        quantiles_loc=quantiles_loc,
-                        uniform_loc=args.uniform_loc,
+                        n_pooling=0,
+                        optimize_scale=True,
+                        in_dropout=None,
+                        sum_dropout=None,
+                        quantiles_loc=None,
+                        uniform_loc=None,
                         rand_state=np.random.RandomState(42),
-                        leaf_distribution=leaf_distribution
+                        leaf_distribution=args.leaf_distribution,
                     ).to(self.device)
 
         # TODO:  Please look into this 12/30
@@ -98,7 +92,7 @@ class Source():
         self.model.load_state_dict(model_checkpoint['model_state_dict'])
         self.model.eval()
 
-    def message_fast(self, x, dope_mask):
+    def message(self, x, dope_mask):
 
         # Expect non log beliefs and convert them to log beliefs
         external_log_probs = torch.log(x) - torch.logsumexp(torch.log(x), dim=1, keepdim=True)
@@ -153,6 +147,28 @@ class Source():
 
         return message
 
+    def message_fast(self, quant_mean, quant_var, num_bins, width, dope_mask=None, dope_prob=None, sample_doping=False):
+
+        # Get the unfiltered message that will need to be corrected with 
+        # doping probabilities in the next step
+        message, mixture_probs = source_to_quant(
+            quant_mean=quant_mean,
+            quant_var=quant_var,
+            spn=self.model,
+            num_bins=num_bins,
+            width=width,
+        )  # (1, num_bins, h, w)
+
+        # Flatten this message
+        message = message.flatten(start_dim=2).permute(0, 2, 1)  # (1, num_bins, h * w)
+
+        # Filter the messages if using sample doping
+        if sample_doping:
+            message = torch.where(dope_mask == 1, dope_prob, message)  # (1, h * w, num_bins)
+
+        return message, mixture_probs
+
+
 class SourceCodeBP():
 
     def __init__(self,
@@ -171,7 +187,9 @@ class SourceCodeBP():
         self.w = w
         self.p = p
         self.doperate = doperate
-        self.alphabet_size = args.n_batches
+        self.alphabet_size = args.num_bins
+        self.width = args.width
+        self.doping_type = args.doping_type
 
         # Number of bits per alphabet
         self.bits = math.ceil(np.log2(self.alphabet_size))
@@ -199,7 +217,7 @@ class SourceCodeBP():
             NotImplementedError("No other datasets supported currently")
 
         # Setup the source graph
-        self.source = Source(in_size=(1, self.h, self.w), out_classes=1, args=args)
+        self.source = Source(in_size=(1, self.h, self.w), args=args)
 
         # Setup the code graph
         self.code = CodeBP(self.H, self.device).to(self.device)
@@ -208,76 +226,173 @@ class SourceCodeBP():
         self.npot = torch.ones(1, self.h * self.w, self.alphabet_size).to(self.device) / self.alphabet_size
         # Store a matrix for masking
         self.mask = torch.zeros(1, self.h * self.w, self.alphabet_size).to(self.device)
+        
         # Input image
+        self.s = None
         self.samp = None
 
         # Encoded image
-        self.x = None
+        self.c = None
+        self.codeword = None
 
         # Initialize the messages
         self.M_to_code = None
         self.M_to_grid = None
         self.B = None
 
-    def doping(self):
+    def sample_doping(self):
 
+        # Choose the doping indices based on the doping rate
         indices = np.random.choice(self.h*self.w, size=int(self.h*self.w*self.doperate), replace=False)
-        vals = self.samp.cpu().numpy()[indices].flatten().astype(int)
+
+        # Get the value of the doped bits from the quantized samples
+        vals = self.q[indices].flatten().astype(int)
+
         self.npot[:, indices, :] = 0.0
         self.npot[:, indices, vals] = 1.0
         self.mask[:, indices, :] = 1.0
-        # Update the node potential after doping
+
+        # Update the node potential for code graph BP after doping
         self.ps = msg_int_to_graycode(self.npot)
+
+    def lattice_doping(self, lattice_sites):
+
+        # Choose the doping indices periodically in the translated domain
+        indices = np.arange(0, self.h * self.w * self.bits, self.bits) + lattice_sites.reshape(-1, 1)
+        indices = indices.flatten()
+        vals = self.g[indices].flatten()
+
+        self.ps = 0.5 * torch.ones(self.h * self.w * self.bits, 2).to(self.device)
+        self.mask = torch.zeros(self.h * self.w * self.bits, 2).to(self.device)
+        self.ps[indices, :] = 0.0
+        self.ps[indices, vals] = 1.0
+        self.mask[indices, :] = 1.0
+
+        self.npot = msg_graycode_to_int(self.ps, 1, self.h * self.w, self.bits)
+
+    def doping(self):
+
+        if self.doping_type == 'sample_doping':
+            self.sample_doping()
+        elif self.doping_type == 'lattice_doping':
+            self.lattice_doping(lattice_sites=np.array([1]))
+        else:
+            raise NotImplementedError('Other forms of doping not implemented!')
 
     def generate_sample(self):
 
         idx = np.random.randint(0, len(self.dataset))
-        # idx = 3756
-        self.samp, _ = self.dataset[idx]
-        self.samp = torch.FloatTensor(self.samp.reshape(-1, 1)).to(self.device)
-        # Works well with Numpy so just convert it to be safe
-        self.graycoded_samp = torch.FloatTensor(convert_to_graycode(self.samp.cpu().numpy().astype('uint8'), bits=self.bits)).to(self.device)
+        self.s, _ = self.dataset[idx]
+        self.s = self.s.reshape(-1, 1).cpu().numpy() / 256
+        # self.samp = torch.FloatTensor(self.samp.reshape(-1, 1)).to(self.device)
+        # # Works well with Numpy so just convert it to be safe
+        # self.graycoded_samp = torch.FloatTensor(convert_to_graycode(self.samp.cpu().numpy().astype('uint8'), bits=self.bits)).to(self.device)
 
     def set_sample(self, x):
         
-        self.samp = x
-        self.samp = torch.FloatTensor(self.samp.reshape(-1, 1)).to(self.device)
-        # Works well with Numpy so just convert it to be safe
-        self.graycoded_samp = torch.FloatTensor(convert_to_graycode(self.samp.cpu().numpy().astype('uint8'), bits=self.bits)).to(self.device)
+        self.s = x.reshape(-1, 1) / 256
+        # self.samp = torch.FloatTensor(self.samp.reshape(-1, 1)).to(self.device)
+        # # Works well with Numpy so just convert it to be safe
+        # self.graycoded_samp = torch.FloatTensor(convert_to_graycode(self.samp.cpu().numpy().astype('uint8'), bits=self.bits)).to(self.device)
+
+    def quantize(self):
+
+        self.q = np.maximum(np.minimum(np.floor(self.s / self.width), 0), self.alphabet_size-1)
+
+    def translate(self):
+
+        self.g = convert_to_graycode(self.q.astype('uint8'), bits=self.bits)
+
+    def hash(self):
+
+        self.c = (self.H.cpu().numpy() @ self.g) % 2
 
     def encode(self):
 
-        self.x = (self.H @ self.graycoded_samp) % 2
+        # First quantize the sample
+        self.quantize()
 
-    def decode_step(self, fast_message=True):
+        # Translate the sample
+        self.translate()
+
+        # Hash the translated sample
+        self.hash()
+
+        # Push the different vectors to the device
+        self.samp = torch.FloatTensor(self.s).to(self.device)
+        self.quantized_samp = torch.FloatTensor(self.q).to(self.device)
+        self.graycoded_samp = torch.FloatTensor(self.g).to(self.device)
+        self.codeword = torch.FloatTensor(self.c).to(self.device)
+
+    def encode_full(self, x):
+
+        x = np.floor(x / self.width)
+        x = convert_to_graycode(x.astype('uint8'), bits=self.bits)
+        x = (self.H.cpu().numpy() @ x) % 2
+
+        return x
+
+    def decode_step(self):
 
         # Perform one step of code graph belief propagation
-        self.code(self.ps, self.x, self.M_to_code)
-        self.M_from_code = self.code.M_out
-        # Convert to graycode and reshape to send to grid
-        self.M_to_grid = msg_graycode_to_int(
+        self.code(self.ps, self.codeword, self.M_to_code)
+        self.M_from_code = self.code.M_out  # (h * w * bits, 2)
+
+        # Convert the message over the graycode to a message
+        # over the quantizer bins
+        self.M_to_quant = msg_graycode_to_int(
             M_in=self.M_from_code,
             height=1,
             width=self.h * self.w,
             bits=self.bits,
-        )  # 1 x (h*w) x alphabet_size
+        )  # (1, h * w, alphabet_size)
+
+        # Convert the discrete messages over the quantizer bins
+        # to a Gaussian message by computing the mean and variance
+        self.quant_mean, self.quant_var = quant_to_source(
+            num_bins=self.alphabet_size,
+            width=self.width,
+            message=(self.M_to_quant * self.npot) / torch.sum(self.M_to_quant * self.npot, dim=-1, keepdim=True),  #TODO: Might not need to multiply here
+        )  # (1, h * w)
+
+        # Reshape for input to SPN source -- (1, out_channels, in_channels, h, w)
+        self.quant_mean = self.quant_mean.reshape(1, 1, 1, self.h, self.w)
+        self.quant_var = self.quant_var.reshape(1, 1, 1, self.h, self.w)
 
         # Perform one step of source graph belief propagation
-        # TODO: Make sure that there is no conflict in the probabilities.  For example if npot
-        # says [1, 0] and code graph says [0, 1] we need to make sure it is [1, 0] before it is passed
-        # to the source graph, otherwise just multiplying will result in [0, 0] probability.  To do this 
-        # we just change every doped pixel row back to [0, 1] or [1, 0] as specified in npot
-        external_prob = self.M_to_grid * self.npot  # 1 x (h*w) x 256
-        external_prob = torch.where(self.mask == 1, self.npot, external_prob)  # 1 x (h*w)x 256
-        external_prob = external_prob.permute(0, 2, 1) # 1 x 256 x (h*w)
-        self.M_from_grid = self.source.message_fast(external_prob, self.mask)
-        # Convert to int and reshape this output
-        self.M_to_code = msg_int_to_graycode(self.M_from_grid)
+        self.M_from_grid, mixture_probs = self.source.message_fast(
+            quant_mean=self.quant_mean,
+            quant_var=self.quant_var,
+            num_bins=self.alphabet_size,
+            width=self.width,
+            dope_mask=self.mask,
+            dope_prob=self.npot,
+            sample_doping=(self.doping_type == 'sample_doping'),
+        )  # (1, h * w, num_bins), (1, num_components, h, w)
+
+        # Convert to messages over graycode
+        self.M_to_code = msg_int_to_graycode(self.M_from_grid)  # (h * w * bits, 2)
+
+        if self.doping_type == 'lattice_doping':
+            self.M_to_code = torch.where(self.mask == 1, self.ps, self.M_to_code)
+
+        # Compute the marginal image
+        base_mean = self.source.model.base_layer.mean
+        base_var = torch.exp(2 * self.source.model.base_layer.log_scale)
+
+        # Get the mixture probabilities (derivatives) and multiply with scaling factor
+        scaling_factor = torch.exp(-0.5 * (base_mean - self.quant_mean)**2 / (base_var + self.quant_var)) / torch.sqrt(2 * np.pi * (base_var + self.quant_var))
+        mixture_probs = mixture_probs * scaling_factor.squeeze(2)
+        mixture_probs /= torch.sum(mixture_probs, dim=1)  # Normalize here
+
+        # Get expected value of the base distribution x messages from code 
+        marginal = (base_mean * self.quant_var + self.quant_mean * base_var) / (base_var + self.quant_var)  # (1, num_components, 1, h, w)
+        self.marginal = torch.sum(mixture_probs * marginal.squeeze(2), dim=1, keepdim=True)  # (1, 1, h, w)
 
     def decode(self, num_iter=1, verbose=False, writer=None):
 
         # Set the initial beliefs to all nans
-        max_ll_old = torch.tensor(float('nan') * np.ones((1, self.h * self.w))).to(self.device)
+        max_ll_old = torch.tensor(float('nan') * np.ones((1, 1, self.h, self.w))).to(self.device)
 
         self.video = []
         self.video = [torch.argmax(self.npot, -1).reshape(1, 1, 1, self.h, self.w)]
@@ -288,28 +403,31 @@ class SourceCodeBP():
             # Perform a step of message passing/decoding
             self.decode_step()
 
-            # Calculate the belief
-            self.B = self.M_from_grid * self.M_to_grid * self.npot
-            self.B /= torch.sum(self.B, -1, keepdims=True)
-            self.max_ll = torch.argmax(self.B, -1).reshape(-1, 1)
+            # Calculate the marginal image
+            marginal_image = self.marginal
 
             # Add the video for logging
-            plot_max_ll = (self.max_ll - torch.min(self.samp)) / torch.max((self.samp - torch.min(self.samp)))
-            self.video.append(plot_max_ll.reshape(1, 1, 1, self.h, self.w))
+            self.video.append(marginal_image.reshape(1, 1, 1, self.h, self.w))  # TODO: Check this for image intensity values
 
-            # Compute the number of errors and print some information
-            errs = torch.mean(torch.abs(self.max_ll - self.samp)).item()
-            devs = torch.sum(1 - (self.max_ll == self.samp).float()).item()
+            # Compute the MSE loss
+            mse = torch.mean((marginal_image - self.samp.reshape(1, 1, self.h, self.w))**2).item()
 
             if verbose:
-                print(f"Iteration {i} :- Errors = {errs}, Deviations = {devs}")
+                print(f"Iteration {i} :- MSE = {mse}")
 
             # Termination condition to end belief propagation
-            if torch.sum(torch.abs(self.max_ll - max_ll_old)).item() < 0.5:
+            if torch.max(torch.abs(marginal_image - max_ll_old)).item() < 0.01:
                 break
-            max_ll_old = self.max_ll
+            max_ll_old = marginal_image
 
-        return errs, int(devs), torch.cat(self.video, dim=1)
+        # Check if the marginal image satisfies the constraints
+        z = self.codeword.detach().cpu().numpy()
+        z_hat = self.encode_full(marginal_image.detach().cpu().numpy().reshape(-1, 1))
+        errs = np.count_nonzero(z - z_hat)
+
+        print(f"Errors in constraint satisfaction :- {errs} / {len(z_hat)}")
+
+        return mse, errs, torch.cat(self.video, dim=1)
 
 def test_source_code_bp_spn():
 
@@ -319,41 +437,17 @@ def test_source_code_bp_spn():
     parser.add_argument('--num_iter', type=int, default=100, help="Number of bp iterations")
     parser.add_argument('--doperate', type=float, default=0.04, help="Dope rate")
     parser.add_argument('--rate', type=float, default=0.5, help='Compression rate')
-    parser.add_argument('--console_display', action='store_true', default=False, help="Visualize results in matplotlib")
-    parser.add_argument('--num_experiments', type=int, default=1, help="Number of bp experiments")
+    parser.add_argument('--num_bins', type=int, default=256, help='Number of bins to use in quantizer')
+    parser.add_argument('--inv_width', type=float, default=1, help='Inverse width of each quantizer bin')
+    parser.add_argument('--width', type=float, default=1, help='Width of each quantizer bin')
     parser.add_argument('--checkpoint', type=str, default=None, help='Path to checkpoint file')
-    parser.add_argument('--num_avg', type=int, default=1000, help='Number of examples to use for averaging')
     parser.add_argument('--phase', type=str, default='test', help='Phase option for Ising dataset')
-    parser.add_argument('--source_type', choices=['pgm', 'spn'], default='spn', help='The type of source model to use')
+    parser.add_argument('--doping_type', type=str, default='sample_doping', choices=['sample_doping', 'lattice_doping'], help="Type of doping to use")
     # DGC-SPN arguments
-    parser.add_argument('--dequantize', action='store_true', help='Whether to use dequantization.')
-    parser.add_argument('--logit', type=float, default=None, help='The logit value to use for vision datasets.')
-    parser.add_argument('--discriminative', action='store_true', help='Whether to use discriminative settings.')
-    parser.add_argument('--n-batches', type=int, default=256, help='The number of input distribution layer batches.')
-    parser.add_argument('--sum-channels', type=int, default=32, help='The number of channels at sum layers.')
+    parser.add_argument('--n-batches', type=int, default=128, help='The number of input distribution layer batches.')
+    parser.add_argument('--sum-channels', type=int, default=64, help='The number of channels at sum layers.')
     parser.add_argument('--depthwise', action='store_true', help='Whether to use depthwise convolution layers.')
-    parser.add_argument('--n-pooling', type=int, default=0, help='The number of initial pooling product layers.')
-    parser.add_argument(
-        '--no-optimize-scale', dest='optimize_scale',
-        action='store_false', help='Whether to optimize scale in Gaussian layers.'
-    )
-    parser.add_argument(
-        '--quantiles-loc', action='store_true', default=False,
-        help='Whether to use mean quantiles for leaves initialization.'
-    )
-    parser.add_argument(
-        '--uniform-loc', nargs=2, type=float, default=None,
-        help='Use uniform location for leaves initialization.'
-    )
-    parser.add_argument('--in-dropout', type=float, default=None, help='The input distributions layer dropout to use.')
-    parser.add_argument('--sum-dropout', type=float, default=None, help='The sum layer dropout to use.')
-    parser.add_argument('--learning-rate', type=float, default=1e-3, help='The learning rate.')
-    parser.add_argument('--batch-size', type=int, default=128, help='The batch size.')
-    parser.add_argument('--epochs', type=int, default=100, help='The number of epochs.')
-    parser.add_argument('--patience', type=int, default=30, help='The epochs patience used for early stopping.')
-    parser.add_argument('--weight-decay', type=float, default=0.0, help='L2 regularization factor.')
-    parser.add_argument('--binary', action='store_true', default=False, help='Use binary model and binarize dataset')
-    parser.add_argument('--continue_checkpoint', default=None, help='Checkpoint to continue training from')
+    parser.add_argument('--leaf_distribution', type=str, default='gaussian', help="Type of leaf distribution")
     parser.add_argument('--dataset', type=str, choices=['mnist', 'fashion-mnist', 'cifar10'], default='cifar10', help='Dataset to use for training')
     parser.add_argument('--root_dir', type=str, default='/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/spn_code_decoding/markov_test/markov_hf_001',
                     help='Dataset root directory')
@@ -369,14 +463,16 @@ def test_source_code_bp_spn():
     else:
         raise NotImplementedError("Decoding not implemented for this dataset")
 
+    # Store the decoding rate
     rate = args.rate
-    M = args.n_batches
+    # Store the alphabet size/number of quantizer bins
+    M = args.num_bins
+    # Store the number of bits per bin and total bits of the quantized representation
     bits = math.ceil(np.log2(M))
     N_bits = h * w * bits
 
-    # Set some default values
-    args.depthwise = True
-    args.binary = True
+    # Set the inverse width from width
+    args.width = 1 / args.inv_width
 
     source_code_bp = SourceCodeBP(
                         H=pyldpc_generate.generate(int(rate * N_bits), N_bits, 3.0, 2, 123),
@@ -399,20 +495,19 @@ def test_source_code_bp_spn():
     if args.log_video:
         # Create the writer
         timestamp = time.strftime("%Y-%m-%d_%H:%M:%S")
-        writer = SummaryWriter(f'markov_source_bp_results/spn/tensorboard/{timestamp}')
+        writer = SummaryWriter(f'bp_results_lossy/spn/tensorboard/{timestamp}')
         # Write the args to tensorboard
         writer.add_text('config', str(args.__dict__))
 
     # Decode the sample
     _, _, video = source_code_bp.decode(num_iter=100, verbose=True, writer=writer)
-    print(video.shape)
 
     if args.log_video:
-        os.makedirs(f'bp_results_images_gray/{args.dataset}/{timestamp}/spn')
+        os.makedirs(f'bp_results_images_gray_lossy/{args.dataset}/{timestamp}/spn')
         numpy_image = video.squeeze().detach().cpu().numpy().repeat(4, axis=-1).repeat(4, axis=-2)
         for i in range(numpy_image.shape[0]):
-            im = Image.fromarray(255*numpy_image[i, ...]).convert('RGB')
-            im.save(f'bp_results_images_gray/{args.dataset}/{timestamp}/spn/{i}.png')
+            im = Image.fromarray((255*numpy_image[i, ...]).astype('uint8')).convert('RGB')
+            im.save(f'bp_results_images_gray_lossy/{args.dataset}/{timestamp}/spn/{i}.png')
 
     if args.log_video:
         writer.add_video(f'convergence_video', video, fps=1, global_step=0)

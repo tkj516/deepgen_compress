@@ -123,6 +123,20 @@ class SpatialIndicatorLayer(torch.nn.Module):
         return indicators
 
 
+def log_min_exp(a, b, epsilon=1e-8):
+    """
+    Computes the log of exp(a) - exp(b) in a (more) numerically stable fashion.
+    Using:
+     log(exp(a) - exp(b))
+     c + log(exp(a-c) - exp(b-c))
+     a + log(1 - exp(b-a))
+    And note that we assume b < a always.
+    """
+    y = a + torch.log(1 - torch.exp(b - a) + epsilon)
+
+    return y
+
+
 class SpatialDiscreteLogisticLayer(torch.nn.Module):
     """Spatial Discrete Logistic input layer."""
     def __init__(self, in_size, out_channels, inverse_width=2**8):
@@ -170,14 +184,24 @@ class SpatialDiscreteLogisticLayer(torch.nn.Module):
     def out_size(self):
         return self.out_channels, self.in_height, self.in_width
 
+    @property
+    def logits(self):
+
+        grid = torch.arange(0, self.inv_width).reshape(1, -1, 1, 1)
+        grid = grid.repeat(self.out_channels, 1, self.in_height, self.in_width)
+        return self.log_prob(grid)    
+
     def log_prob(self, x):
 
         scale = torch.exp(self.log_scale).unsqueeze(0)
         mean = self.mean.unsqueeze(0)
-        prob = (torch.sigmoid((x + 0.5 / self.inv_width - mean) / scale) 
-                - torch.sigmoid((x - 0.5 / self.inv_width - mean) / scale))
-            
-        return torch.log(prob)
+        if mean.isnan().any() == True or scale.isnan().any() == True:
+            print("Nan detected!!!")
+            exit(0)
+        prob = log_min_exp(F.logsigmoid((x + 0.5 / self.inv_width - mean) / scale), 
+                F.logsigmoid((x - 0.5 / self.inv_width - mean) / scale))
+
+        return prob
 
     def forward(self, x):
         """
@@ -197,18 +221,110 @@ class SpatialDiscreteLogisticLayer(torch.nn.Module):
         # This implementation assumes independence between channels of the same pixel random variables
         return torch.sum(x, dim=2)
 
+
+class SpatialGaussianLayer(torch.nn.Module):
+    """Spatial Gaussian input layer."""
+    def __init__(self, in_size, out_channels, inverse_width=2**8):
+        """
+        Initialize a Spatial Gaussian input layer.
+
+        :param in_size: The size of the input tensor.
+        :param out_channels: The number of output channels.
+        """
+        super(SpatialGaussianLayer, self).__init__()
+        self.in_size = in_size
+        self.out_channels = out_channels
+        self.inv_width = inverse_width
+
+        # Insantiate epsilon
+        self.eps = 1e-5
+
+        # Instantiate the mean and scale parameters
+        self.mean = torch.nn.Parameter(
+            torch.rand(out_channels, *self.in_size),
+            requires_grad = True,
+        )
+        self.log_scale = torch.nn.Parameter(
+            torch.rand(out_channels, *self.in_size),
+            requires_grad = True,
+        )
+
+        # Initialize some useful constants
+        self.register_buffer('zero', torch.zeros(1))
+        self.register_buffer('nan', torch.tensor(np.nan))
+
+    @property
+    def in_channels(self):
+        return self.in_size[0]
+
+    @property
+    def in_height(self):
+        return self.in_size[1]
+
+    @property
+    def in_width(self):
+        return self.in_size[2]
+
+    @property
+    def out_size(self):
+        return self.out_channels, self.in_height, self.in_width
+
+    def log_prob(self, x):
+
+        if self.mean.isnan().any() == True or self.log_scale.isnan().any() == True:
+            print("Nan detected!!!")
+            exit(0)
+
+        var = torch.exp(2 * self.log_scale)
+
+        x = torch.where(torch.isnan(x), self.zero, x)
+
+        log_prob = -((x - self.mean) ** 2) / (2 * var) - self.log_scale - 0.5 * np.log(2 * np.pi)
+
+        return log_prob
+
+    def cdf(self, x):
+
+        phi = lambda x: 0.5 * (1 + torch.erf(x / np.sqrt(2)))
+
+        # return phi((x - self.mean) / torch.exp(self.log_scale))
+
+        return phi(x)
+
+    def forward(self, x):
+        """
+        Evaluate the layer given some inputs.
+
+        :param x: The inputs.
+        :return: The tensor result of the layer.
+        """
+
+        # Where is Nan
+        n = torch.isnan(x.clone().detach())
+
+        # Compute the log-likelihoods
+        x = torch.unsqueeze(x, dim=1) / 256.0
+        x = self.log_prob(x)
+
+        # Marginalize missing values (denoted with NaNs)
+        x = torch.where(n.unsqueeze(1), self.zero, x)
+
+        # This implementation assumes independence between channels of the same pixel random variables
+        return torch.sum(x, dim=2)
+
+
 if __name__ == "__main__":
 
-    x = (torch.rand(2, 1, 28, 28) > 0.5).float()
+    x = (torch.rand(2, 1, 4, 4) > 0.5).float()
     x[..., -1, :] = float('nan')
 
-    indicator_leaf = SpatialIndicatorLayer(in_size=(1, 28, 28), out_channels=2)
+    indicator_leaf = SpatialIndicatorLayer(in_size=(1, 4, 4), out_channels=2)
     
     print(x)
     print(indicator_leaf(x))
     print(torch.sum(indicator_leaf(x), dim=1))
 
-    discrete_logistic_leaf = SpatialDiscreteLogisticLayer(in_size=(1, 28, 28), out_channels=2, inverse_width=2)
+    discrete_logistic_leaf = SpatialDiscreteLogisticLayer(in_size=(1, 4, 4), out_channels=2, inverse_width=2)
     
     print(x)
     print(discrete_logistic_leaf(x))

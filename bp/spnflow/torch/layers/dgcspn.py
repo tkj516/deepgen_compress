@@ -76,7 +76,7 @@ class SpatialGaussianLayer(torch.nn.Module):
         :return: The tensor result of the layer.
         """
         # Compute the log-likelihoods
-        x = torch.unsqueeze(x, dim=1)
+        x = torch.unsqueeze(x, dim=1) / 256.0
         x = self.distribution.log_prob(x).float()
 
         # Apply the input dropout, if specified
