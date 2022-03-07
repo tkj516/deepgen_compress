@@ -62,23 +62,25 @@ def source_to_quant(
     (z_grad, ) = torch.autograd.grad(y, z, grad_outputs=torch.ones_like(y))  # (1, num_components, h, w)
 
     # Get the logits by computing the probability of each bin
-    bins = torch.arange(1, num_bins).reshape(1, -1, 1, 1, 1, 1).to(base_mean.device)
+    bins = torch.arange(1, num_bins).reshape(1, -1, 1, 1, 1, 1).to(base_mean.device)  # 0 --> 1 for other things
     inv_width = 1 / width
 
     def cdf(u):
         return spn.base_layer.cdf(-(inv_width * base_mean - u) / (inv_width * base_std))
-    probs = torch.cat([torch.zeros(1, 1, num_components, 1, h, w).to(quant_mean.device), cdf(bins), torch.ones(1, 1, num_components, 1, h, w).to(quant_mean.device)], dim=1)
+    probs = torch.cat([torch.zeros(1, 1, num_components, 1, h, w).to(quant_mean.device), cdf(bins), torch.ones(1, 1, num_components, 1, h, w).to(quant_mean.device)], dim=1)  # (1, num_bins + 1, num_components, 1, h, w)
     # probs = cdf(bins + 1) - cdf(bins)  # (1, num_bins, num_components, 1, h, w)
-    probs = probs[:, 1:, ...] - probs[:, :-1, ...]
+    probs = probs[:, 1:, ...] - probs[:, :-1, ...]  # (1, num_bins, num_components, 1, h, w)
     probs = probs.squeeze(3)
 
     # Compute the marginal of each pixel now.  Note that this message is unfiltered
     # and must be corrected using the doping probabilities
     # z_grad = z_grad / z
-    z_grad = z_grad.softmax(dim=1).unsqueeze(1)  # (1, 1, num_components, h, w)
+    z_grad = z_grad / torch.sum(z_grad, dim=1)
+    z_grad = z_grad.unsqueeze(1)  # (1, 1, num_components, h, w)
 
     message = z_grad * probs  # (1, num_bins, num_components, h, w)
-    message = message.sum(dim=2).softmax(dim=1)  # (1, num_bins, h, w)
+    message = message.sum(dim=2)  # (1, num_bins, h, w)
+    message /= torch.sum(message, dim=1, keepdim=True)
 
     return message, z_grad.squeeze(1)
 

@@ -277,8 +277,6 @@ class SpatialGaussianLayer(torch.nn.Module):
 
         var = torch.exp(2 * self.log_scale)
 
-        x = torch.where(torch.isnan(x), self.zero, x)
-
         log_prob = -((x - self.mean) ** 2) / (2 * var) - self.log_scale - 0.5 * np.log(2 * np.pi)
 
         return log_prob
@@ -286,8 +284,6 @@ class SpatialGaussianLayer(torch.nn.Module):
     def cdf(self, x):
 
         phi = lambda x: 0.5 * (1 + torch.erf(x / np.sqrt(2)))
-
-        # return phi((x - self.mean) / torch.exp(self.log_scale))
 
         return phi(x)
 
@@ -299,15 +295,12 @@ class SpatialGaussianLayer(torch.nn.Module):
         :return: The tensor result of the layer.
         """
 
-        # Where is Nan
-        n = torch.isnan(x.clone().detach())
-
         # Compute the log-likelihoods
         x = torch.unsqueeze(x, dim=1) / 256.0
         x = self.log_prob(x)
 
         # Marginalize missing values (denoted with NaNs)
-        x = torch.where(n.unsqueeze(1), self.zero, x)
+        x = torch.where(torch.isnan(x), self.zero, x)
 
         # This implementation assumes independence between channels of the same pixel random variables
         return torch.sum(x, dim=2)

@@ -92,61 +92,6 @@ class Source():
         self.model.load_state_dict(model_checkpoint['model_state_dict'])
         self.model.eval()
 
-    def message(self, x, dope_mask):
-
-        # Expect non log beliefs and convert them to log beliefs
-        external_log_probs = torch.log(x) - torch.logsumexp(torch.log(x), dim=1, keepdim=True)
-
-        input = float('nan') * torch.ones(1, 1, self.h, self.w).to(self.device)
-
-        # Compute the base distribution log-likelihoods
-        z = self.model.base_layer(input)
-        z.requires_grad = True
-
-        # If there are external probabilities per node add them here
-        z = z + external_log_probs.reshape(1, -1, self.h, self.w)
-        z = z - torch.logsumexp(z, dim=1, keepdim=True)
-
-        # TODO: Uncomment for original version
-        # Forward through the inner layers
-        # y = z
-        # for layer in self.model.layers:
-        #     y = layer(y)
-
-        # TODO: New version -- Comment for old version
-        z = self.model.layers[0](z)
-        y = z
-        for i in range(1, len(self.model.layers)):
-            y = self.model.layers[i](y)
-
-        # Forward through the root layer
-        y = self.model.root_layer(y)
-
-        # Compute the gradients at distribution leaves
-        (z_grad,) = torch.autograd.grad(y, z, grad_outputs=torch.ones_like(y))  # 1 x alphabet_size x (h*w)
-
-        # TODO: Comment to revert to old version
-        # Compute probabilities
-        logits = self.model.layers[0].weight.log_softmax(dim=1).unsqueeze(0)
-        z_grad = z_grad.unsqueeze(2) * torch.exp(logits) #* torch.exp(external_log_probs.reshape(1, -1, self.h, self.w)) / torch.exp(z.unsqueeze(2))
-        z_grad = z_grad.sum(dim=1)
-
-        # Reshape to get message
-        message = z_grad.flatten(start_dim=2)
-
-        # If you calculate the derivative the result must bust divided by the external log prob
-        # Remember that the derivative at an indicator enforces that the pixel is either 0 or 1
-        # But it was actually scaled by the external prob, so remove it to resemble slow message passing
-        message = torch.log(message) #- external_log_probs
-        message = message.permute(0, 2, 1)  # 1 x (h*w) x alphabet_size
-        # Replace doped probabilities with correct label
-        message = torch.where(dope_mask == 1, external_log_probs.permute(0, 2, 1), message)
-        # Remove nans after division
-        message = torch.where(torch.isnan(message), external_log_probs.permute(0, 2, 1), message)
-        message = torch.exp(message)
-
-        return message
-
     def message_fast(self, quant_mean, quant_var, num_bins, width, dope_mask=None, dope_prob=None, sample_doping=False):
 
         # Get the unfiltered message that will need to be corrected with 
@@ -275,7 +220,7 @@ class SourceCodeBP():
         if self.doping_type == 'sample_doping':
             self.sample_doping()
         elif self.doping_type == 'lattice_doping':
-            self.lattice_doping(lattice_sites=np.array([1]))
+            self.lattice_doping(lattice_sites=np.array([0]))
         else:
             raise NotImplementedError('Other forms of doping not implemented!')
 
@@ -297,8 +242,8 @@ class SourceCodeBP():
 
     def quantize(self):
 
-        self.q = np.maximum(np.minimum(np.floor(self.s / self.width), 0), self.alphabet_size-1)
-
+        self.q = np.minimum(np.maximum(np.floor(self.s / self.width), 0), self.alphabet_size-1)
+        
     def translate(self):
 
         self.g = convert_to_graycode(self.q.astype('uint8'), bits=self.bits)
@@ -338,6 +283,9 @@ class SourceCodeBP():
         self.code(self.ps, self.codeword, self.M_to_code)
         self.M_from_code = self.code.M_out  # (h * w * bits, 2)
 
+        if torch.any(torch.isnan(self.M_from_code)):
+            print("NaN from code BP")
+
         # Convert the message over the graycode to a message
         # over the quantizer bins
         self.M_to_quant = msg_graycode_to_int(
@@ -347,13 +295,22 @@ class SourceCodeBP():
             bits=self.bits,
         )  # (1, h * w, alphabet_size)
 
+        if torch.any(torch.isnan(self.M_to_quant)):
+            print("NaN from to quant")
+
         # Convert the discrete messages over the quantizer bins
         # to a Gaussian message by computing the mean and variance
         self.quant_mean, self.quant_var = quant_to_source(
             num_bins=self.alphabet_size,
             width=self.width,
-            message=(self.M_to_quant * self.npot) / torch.sum(self.M_to_quant * self.npot, dim=-1, keepdim=True),  #TODO: Might not need to multiply here
+            message=self.M_to_quant #=(self.M_to_quant * self.npot) / torch.sum(self.M_to_quant * self.npot, dim=-1, keepdim=True),  #TODO: Might not need to multiply here
         )  # (1, h * w)
+
+        if torch.any(torch.isnan(self.quant_mean)):
+            print("NaN from quant mean")
+
+        if torch.any(torch.isnan(self.quant_var)):
+            print("NaN from quant var")
 
         # Reshape for input to SPN source -- (1, out_channels, in_channels, h, w)
         self.quant_mean = self.quant_mean.reshape(1, 1, 1, self.h, self.w)
@@ -370,11 +327,22 @@ class SourceCodeBP():
             sample_doping=(self.doping_type == 'sample_doping'),
         )  # (1, h * w, num_bins), (1, num_components, h, w)
 
+        if torch.any(torch.isnan(self.M_from_grid)):
+            print("NaN from grid")
+
+        if torch.any(torch.isnan(mixture_probs)):
+            print("NaN from mixture probs")
+
         # Convert to messages over graycode
         self.M_to_code = msg_int_to_graycode(self.M_from_grid)  # (h * w * bits, 2)
 
+        if torch.any(torch.isnan(self.M_to_code)):
+            print("NaN from to_code")
+
         if self.doping_type == 'lattice_doping':
             self.M_to_code = torch.where(self.mask == 1, self.ps, self.M_to_code)
+            if torch.any(torch.isnan(self.M_to_code)):
+                print("NaN from to_code")
 
         # Compute the marginal image
         base_mean = self.source.model.base_layer.mean
@@ -434,7 +402,7 @@ def test_source_code_bp_spn():
     parser = argparse.ArgumentParser(description='Belief propagation training arguments')
     parser.add_argument('--ldpc_mat', type=str, default='../H_28.mat', help="Path to LDPC matrix")
     parser.add_argument('--device', type=str, default='cuda:0', help="Device to run the code on")
-    parser.add_argument('--num_iter', type=int, default=100, help="Number of bp iterations")
+    parser.add_argument('--num_iter', type=int, default=40, help="Number of bp iterations")
     parser.add_argument('--doperate', type=float, default=0.04, help="Dope rate")
     parser.add_argument('--rate', type=float, default=0.5, help='Compression rate')
     parser.add_argument('--num_bins', type=int, default=256, help='Number of bins to use in quantizer')
@@ -500,7 +468,7 @@ def test_source_code_bp_spn():
         writer.add_text('config', str(args.__dict__))
 
     # Decode the sample
-    _, _, video = source_code_bp.decode(num_iter=100, verbose=True, writer=writer)
+    _, _, video = source_code_bp.decode(num_iter=args.num_iter, verbose=True, writer=writer)
 
     if args.log_video:
         os.makedirs(f'bp_results_images_gray_lossy/{args.dataset}/{timestamp}/spn')

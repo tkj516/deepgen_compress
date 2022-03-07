@@ -28,15 +28,6 @@ class MyDataParallel(torch.nn.DataParallel):
         except AttributeError:
             return getattr(self.module, name)
 
-class NanTransform():
-
-    def __call__(self, x):
-
-        mask = torch.rand(*x.shape).to(x.device) > 0.9
-        x = torch.where(mask == True, torch.tensor(float('nan')), x)
-
-        return x
-
 if __name__ == '__main__':
     # Parse the arguments
     parser = argparse.ArgumentParser(
@@ -120,7 +111,6 @@ if __name__ == '__main__':
                         lambda x: torch.tensor(np.array(x)),
                         Reshape(in_size),
                         lambda x: x.float(),
-                        NanTransform()
                     ])
         data_train = torchvision.datasets.CIFAR10('../../../CIFAR10', train=True, transform=transform, download=True)
         data_test = torchvision.datasets.CIFAR10('../../../CIFAR10', train=False, transform=transform, download=True)
