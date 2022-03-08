@@ -112,6 +112,7 @@ class CodeBP(nn.Module):
         if check2.shape[0] > 0:
             # Other neighbors should be set to the sure neighbor's value
             self.Hsx.data[factor_neighbors[check2[:,0], check2[:,1]], grid[check2[:,0], check2[:,1]]] = sure_sum[check2[:,0], 0]
+
         # Multiple sure neighbors
         nan_check = torch.isnan(sure_sum)
         check1 = torch.nonzero(torch.logical_and((sure_neighbors > 1), nan_check).float())
@@ -165,6 +166,7 @@ class CodeBP(nn.Module):
         if self.unequal_neighbors > 0:
             self.Hsx.data = self.Hsx.data[:, :-1]
             self.Hxs.data = self.Hxs.data[:, :-1]
+
 
         #####################################################################################################
         # Outgoing super edge messages

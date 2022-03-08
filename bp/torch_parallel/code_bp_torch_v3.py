@@ -50,8 +50,11 @@ class CodeBP(nn.Module):
         dope_msg = torch.log(1 - ps[:, 1:]) - torch.log(ps[:, 1:])
         phi = torch.log(1 - Min[:, 1:]) - torch.log(Min[:, 1:])
         prior = (dope_msg + phi).reshape(1, -1) + torch.sum(self.Hxs.data, dim=0, keepdim=True)
+        # prior = (dope_msg + phi).reshape(1, -1) + torch.sum(self.Hxs.data * self.H, dim=0, keepdim=True)
 
-        Hsx = self.H @ torch.diag(torch.clamp(prior.reshape(-1, ), min=-infcap, max=infcap)) - self.Hxs.data + eps * self.H
+        # Hsx = self.H @ torch.diag(torch.clamp(prior.reshape(-1, ), min=-infcap, max=infcap)) - self.Hxs.data + eps * self.H
+        Hsx = torch.clamp(prior, min=-infcap, max=infcap) * self.H - self.Hxs.data + eps * self.H
+        print(Hsx)
         if torch.any(torch.isnan(Hsx)):
             print("Hsx is NaN")
             exit(0)
@@ -62,13 +65,12 @@ class CodeBP(nn.Module):
         tanhm_mod[zero_mask] = 1
         prodtanhm = torch.prod(tanhm_mod, dim=-1, keepdim=True)
 
-        tanhm_inv = 1 / tanhm_mod
-        tanhm_inv[zero_mask] = 0
         prodtanhmdivt = prodtanhm / tanhm
         prodtanhmdivt[zero_mask] = 0
-        multbyx = 2 * torch.atanh(torch.diag(1 - 2 * x.reshape(-1, )) @ prodtanhmdivt)
+        # multbyx = 2 * torch.atanh(torch.diag(1 - 2 * x.reshape(-1, )) @ prodtanhmdivt)
+        multbyx = 2 * torch.atanh((1 - 2 * x) * prodtanhmdivt)
 
-        self.Hxs.data = torch.minimum(torch.maximum(multbyx, torch.tensor(-infcap).to(self.device)), torch.tensor(infcap).to(self.device))
+        self.Hxs.data = torch.clamp(multbyx, min=-1, max=1)
         if torch.any(torch.isnan(self.Hxs.data)):
             print("Hxs is NaN")
             exit(0)

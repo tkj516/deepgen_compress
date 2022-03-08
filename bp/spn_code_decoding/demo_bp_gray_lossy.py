@@ -22,7 +22,7 @@ import torchvision
 import torch.nn.functional as F
 from torchvision.datasets import MNIST, CIFAR10, FashionMNIST
 
-from torch_parallel.code_bp_torch_v3 import CodeBP
+from torch_parallel.code_bp_torch_v2 import CodeBP
 from dgcspn import DgcSpn
 from spnflow.utils.data import compute_mean_quantiles
 from spnflow.torch.transforms import Reshape
@@ -284,6 +284,7 @@ class SourceCodeBP():
         self.M_from_code = self.code.M_out  # (h * w * bits, 2)
 
         if torch.any(torch.isnan(self.M_from_code)):
+            print(self.M_to_code)
             print("NaN from code BP")
 
         # Convert the message over the graycode to a message
@@ -303,7 +304,7 @@ class SourceCodeBP():
         self.quant_mean, self.quant_var = quant_to_source(
             num_bins=self.alphabet_size,
             width=self.width,
-            message=(self.M_to_quant * self.npot) / torch.sum(self.M_to_quant * self.npot, dim=-1, keepdim=True),  #TODO: Might not need to multiply here
+            message=self.M_to_quant  #(self.M_to_quant * self.npot) / torch.sum(self.M_to_quant * self.npot, dim=-1, keepdim=True),  #TODO: Might not need to multiply here
         )  # (1, h * w)
 
         if torch.any(torch.isnan(self.quant_mean)):
