@@ -296,7 +296,8 @@ class SpatialGaussianLayer(torch.nn.Module):
         """
 
         # Compute the log-likelihoods
-        x = torch.unsqueeze(x, dim=1) / 256.0
+        x = torch.unsqueeze(x, dim=1)  # / 256.0
+        # x += torch.rand(*x.shape).to(x.device) / 256.0
         x = self.log_prob(x)
 
         # Marginalize missing values (denoted with NaNs)

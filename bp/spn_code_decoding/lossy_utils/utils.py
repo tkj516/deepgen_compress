@@ -11,6 +11,8 @@ def quantize_source(
 def quant_to_source(
     num_bins, 
     width,
+    min, 
+    max, 
     message,
 ):
     """
@@ -20,8 +22,8 @@ def quant_to_source(
     """
 
     # Store the quantized image bin numbers.  
-    # Divide the interval [0, 255] into num_bins subintervals of length 256/num_bins.
-    bins = torch.arange(num_bins).reshape(1, 1, -1).to(message.device)
+    # Divide the interval [0, 255] into num_bins subintervals
+    bins = torch.arange(min, max + 1).reshape(1, 1, -1).to(message.device)
 
     # Compute the mean and variance of the best fit Gaussian
     mean = width * (torch.sum(bins * message, dim=-1) + 1/2)
@@ -34,6 +36,8 @@ def source_to_quant(
     quant_var,
     spn,
     num_bins,
+    min, 
+    max,
     width,
 ):
 
@@ -62,7 +66,7 @@ def source_to_quant(
     (z_grad, ) = torch.autograd.grad(y, z, grad_outputs=torch.ones_like(y))  # (1, num_components, h, w)
 
     # Get the logits by computing the probability of each bin
-    bins = torch.arange(1, num_bins).reshape(1, -1, 1, 1, 1, 1).to(base_mean.device)  # 0 --> 1 for other things
+    bins = torch.arange(min + 1, max + 1).reshape(1, -1, 1, 1, 1, 1).to(base_mean.device)  # 0 --> 1 for other things
     inv_width = 1 / width
 
     def cdf(u):

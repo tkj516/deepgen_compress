@@ -14,6 +14,7 @@ from spnflow.torch.transforms import Reshape
 from spnflow.utils.data import compute_mean_quantiles
 from routines import torch_train, torch_test
 from my_experiments.datasets import IsingDataset
+from gauss_markov.utils import GaussMarkovDataset
 
 from tensorboardX import SummaryWriter
 
@@ -63,7 +64,7 @@ if __name__ == '__main__':
     parser.add_argument('--logistic', action='store_true', default=False, help='Use discretized logistic leaves')
     parser.add_argument('--gaussian', action='store_true', default=False, help='Use gaussian leaves')
     parser.add_argument('--continue_checkpoint', default=None, help='Checkpoint to continue training from')
-    parser.add_argument('--dataset', type=str, choices=['mnist', 'fashion-mnist', 'cifar10'], default='mnist', help='Dataset to use for training')
+    parser.add_argument('--dataset', type=str, choices=['mnist', 'fashion-mnist', 'cifar10', 'gauss-markov'], default='mnist', help='Dataset to use for training')
     parser.add_argument('--root_dir', type=str, default='/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/datasets/ising_28_05_09_75000',
                     help='Dataset root directory')
     parser.add_argument('--gpu_id', type=int, default=0, help="GPU device to use")
@@ -111,9 +112,21 @@ if __name__ == '__main__':
                         lambda x: torch.tensor(np.array(x)),
                         Reshape(in_size),
                         lambda x: x.float(),
+                        lambda x: x / 256 if args.gaussian else x
                     ])
         data_train = torchvision.datasets.CIFAR10('../../../CIFAR10', train=True, transform=transform, download=True)
         data_test = torchvision.datasets.CIFAR10('../../../CIFAR10', train=False, transform=transform, download=True)
+        n_val = int(0.1 * len(data_train))
+        n_train = len(data_train) - n_val
+        data_train, data_val = torch.utils.data.random_split(data_train, [n_train, n_val])
+    elif args.dataset == 'gauss-markov':
+        in_size = (1, 32, 32)
+        transform = torchvision.transforms.Compose([
+                        Reshape(in_size),
+                        lambda x: x.float(),
+                    ])
+        data_train = GaussMarkovDataset(phase='train')
+        data_test = GaussMarkovDataset(phase='test')
         n_val = int(0.1 * len(data_train))
         n_train = len(data_train) - n_val
         data_train, data_val = torch.utils.data.random_split(data_train, [n_train, n_val])
@@ -127,7 +140,7 @@ if __name__ == '__main__':
         out_classes = 1
 
     # Create the results directory
-    if args.dataset in ['mnist', 'fashion-mnist', 'cifar10']:
+    if args.dataset in ['mnist', 'fashion-mnist', 'cifar10', 'gauss-markov']:
         directory = os.path.join('dgcspn', args.dataset)
     else:
         directory = os.path.join('dgcspn', os.path.basename(args.root_dir))

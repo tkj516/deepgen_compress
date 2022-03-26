@@ -1,14 +1,45 @@
 import torch
 import numpy as np
+from torch_parallel.code_bp_torch_v3 import CodeBP
+from gauss_markov.source import GridBP, SPNBP
 
 device = torch.device('cuda:0')
 
-def spinv(x):
+def bin_to_gray(x, bits=8):
+    """Convert integer to graycode.
 
-    xinv = 1 / x
-    xinv[x == 0] = 0
+    Args:
+        x (int): Integer
+        bits (int, optional): Number of bits per alphabet. Defaults to 8.
 
-    return xinv
+    Returns:
+        str: Graycode in string format.
+    """
+
+    out = x >> 1 ^ x
+    out_str = bin(out).split('b')[-1].zfill(bits)
+
+    return out, out_str
+
+def convert_to_graycode(s, bits=8):
+    """Convert integer samples to graycode.
+
+    Args:
+        s (np.ndarray): Integer samples.
+        bits (int, optional): Number of bits per alphabet. Defaults to 8.
+
+    Returns:
+        np.ndarray: Graycoded samples
+    """
+
+    if not isinstance(s, np.ndarray):
+        s = s.cpu().numpy()
+
+    out = ''.join([bin_to_gray(int(sample), bits)[1] for sample in s.flatten()])  # [::-1]
+    out = np.array([float(sample) for sample in out]).reshape(-1, 1)
+
+    return torch.FloatTensor(out)
+
 
 def compute_alphabet_to_binary(u_prob, z_prob, b, binmx):
 
@@ -93,7 +124,7 @@ def compute_binary_to_alphabet(z_prob, b, binmx):
 
     return u_prob
 
-def compute_quant_to_alphabet(s2q_mean, s2q_var, Q, Q0, b):
+def compute_quant_to_alphabet(s2q_prod_mean, s2q_prod_var, Q, Q0, b):
 
 # % computes the Q to U messages (cf Section 5.2.3)
 # %
@@ -125,18 +156,17 @@ def compute_quant_to_alphabet(s2q_mean, s2q_var, Q, Q0, b):
 # cc = bsxfun(@plus, basec, addc); % value in Eq. 5.48
 # u_prob = diff([zeros(m,1), normcdf(cc), ones(m,1)], 1, 2); %Eq. 5.49
 
-    device = s2q_mean.device
-
     num_bins = 2 ** b
     m = Q.shape[0]
     bin_internal = torch.arange(-num_bins/2 + 1, num_bins/2).reshape(1, -1).to(device)
 
-    QQ = Q ** 2  # m x n
-    Qm = Q * s2q_mean  # m x n
-    Qms = torch.sum(Qm, 1, keepdim=True)  # m x 1
-    QQv = QQ * s2q_var  # m x n
+    q = Q[0, 0]
+    
+    QQ = q ** 2
+    Qms = q * s2q_prod_mean  # m x 1
+    QQv = QQ * s2q_prod_var  # m x 1
 
-    QQvsrt = torch.sqrt(torch.sum(QQv, 1, keepdim=True))  # m x 1
+    QQvsrt = torch.sqrt(QQv)  # m x 1
     basec = (-Qms - Q0) / QQvsrt  # m x 1
     addc = bin_internal / QQvsrt  # 1 x (num_bins - 1)
     cc = basec + addc  # m x (num_bins - 1)
@@ -153,7 +183,7 @@ def compute_quant_to_alphabet(s2q_mean, s2q_var, Q, Q0, b):
     return probs
 
 
-def compute_quant_to_source(s2q_mean, s2q_var, Q, Q0, u_prob, b):
+def compute_quant_to_source(Q, Q0, u_prob, b):
 
 # function [ q2s_mean, q2s_var ] = compute_quant_to_source( s2q_mean, s2q_var, Q, Q0, u_prob, b )
 # % computes the Q to S messages (cf Section 5.2.1)
@@ -189,87 +219,23 @@ def compute_quant_to_source(s2q_mean, s2q_var, Q, Q0, u_prob, b):
 # q2s_mean = - Qinv .* (diag(sparse(Qms)) * qpos - Qm) + diag(sparse(- Q0 + binmean + .5)) * Qinv; 
 # q2s_var = QQinv .* (diag(sparse(sum(QQv, 2))) * qpos - QQv) + diag(sparse(binvar)) * QQinv + convert_slab(Qinv);
 
+    q = Q[0, 0]  # 1 / width
+    
     num_bins = 2 ** b
     bin = torch.arange(-num_bins / 2, num_bins/2).reshape(1, -1).to(device)
 
-    qpos = 1 - (Q == 0).float()
-    QQ = Q ** 2
-    Qm = Q * s2q_mean
-    Qms = torch.sum(Qm, 1, keepdim=True)  # m x 1
-    QQv = QQ * s2q_var
-    Qinv = spinv(Q)
+    Qinv = 1 / q
     QQinv = Qinv ** 2
-    binmean = torch.sum(u_prob * bin, dim=1)  # 1 x num_bins
-    binvar = torch.sum(u_prob * (bin ** 2), 1) - (binmean ** 2)  # 1 x num_bins
+    binmean = torch.sum(u_prob * bin, dim=1, keepdim=True)  # m x 1
+    binvar = torch.sum(u_prob * (bin ** 2), 1, keepdim=True) - (binmean ** 2)  # m x 1
 
-    q2s_mean = -Qinv * (Qms * qpos - Qm) + Qinv * (-Q0 + binmean + 0.5)
-    q2s_var = QQinv * (torch.sum(QQv, dim=1, keepdim=True) * qpos - QQv) + QQinv * binvar + QQinv / 12
+    q2s_mean = Qinv * (-Q0 + binmean + 0.5)  # m x 1
+    q2s_var = QQinv * binvar + QQinv / 12  # m x 1
 
     return q2s_mean, q2s_var
 
 
-def compute_source_to_prior(q2s_mean, q2s_var):
-
-# function [ q2s_prod_mean, q2s_prod_var ] = compute_source_to_prior( q2s_mean, q2s_var )
-# % takes the product of the Q to S messages (cf Section 6.2.2)
-# %
-# % arguments:
-# %  q2s_mean:        m*n sparse matrix, mean of the Q to S Gaussian messages
-# %  q2s_var:         m*n sparse matrix, variance of the Q to S Gaussian messages
-# %
-# % returns:
-# %  q2s_prod_mean:   n*1 vector, mean of the product of the Q to S messages
-# %  q2s_prod_var:	n*1 vector, variance of the product of the Q to S messages
-
-# varinv = spfun(@(x) 1./x, q2s_var);
-# q2s_prod_var = full(1./ sum(varinv,1)');
-
-# mdivv = q2s_mean.*varinv;
-# q2s_prod_mean = full(sum(mdivv, 1)') .* q2s_prod_var;
-
-    varinv = spinv(q2s_var)
-    q2s_prod_var = 1 / torch.sum(varinv, dim=0).reshape(-1, 1)
-
-    mdivv = q2s_mean * varinv
-    q2s_prod_mean = torch.sum(mdivv, 0).reshape(-1, 1) * q2s_prod_var
-
-    return q2s_prod_mean, q2s_prod_var
-
-def compute_source_to_quant(s2s_prod_mean, s2s_prod_var, q2s_mean, q2s_var, Q):
-
-# % computes the S to Q messages (cf Section 5.2.2)
-# %
-# % arguments:
-# %  s2s_prod_mean:   n*1 vector; mean of product of intra-source messages
-# %  s2s_prod_var:	n*1 vector; variance of product of intra-source messages
-# %  q2s_mean:        m*n sparse matrix; mean of Q to S Gaussian messages
-# %  q2s_var:         m*n sparse matrix; variance of Q to S Gaussian messages
-# %  Q:               m*n sparse matrix; the quantization matrix
-# %
-# % reutrns:
-# %  s2q_mean:        m*n sparse matrix, mean of the S to Q Gaussian messages
-# %  s2q_var:         m*n sparse matrix, variance of the S to Q Gaussian messages
-
-# qpos = spones(Q); %0-1 representation of sparsity of Q
-
-# varinv = spfun(@(x) 1./x, q2s_var);
-# s2q_var = spfun(@(x) 1./x, bsxfun(@times, qpos, 1./s2s_prod_var' + sum(varinv,1)) - varinv);
-
-# mdivv = q2s_mean.*varinv;
-# s2q_mean = (bsxfun(@times, qpos, (s2s_prod_mean./s2s_prod_var)' + sum(mdivv, 1)) - mdivv) .* s2q_var;
-
-    qpos = 1 - (Q == 0).float()
-
-    varinv = spinv(q2s_var)
-    s2q_var = spinv(qpos * (1/s2s_prod_var.reshape(1, -1) + torch.sum(varinv, 0)) - varinv)
-
-    mdivv = q2s_mean * varinv
-    s2q_mean = qpos * ((s2s_prod_mean/s2s_prod_var).reshape(1, -1) + torch.sum(mdivv, 0) - mdivv) * s2q_var
-
-    return s2q_mean, s2q_var
-
-
-def marginalize(s2s_prod_mean, s2s_prod_var, q2s_mean, q2s_var):
+def marginalize(s2q_prod_mean, s2q_prod_var, q2s_prod_mean, q2s_prod_var):
    
 # function [ s_mean, s_var ] = marginalize( s2s_prod_mean, s2s_prod_var, q2s_mean, q2s_var)
 # % computes the marginal of the source values (cf Section 6.2.3)
@@ -290,10 +256,59 @@ def marginalize(s2s_prod_mean, s2s_prod_var, q2s_mean, q2s_var):
 # mdivv = q2s_mean.*varinv;
 # s_mean = (s2s_prod_mean./s2s_prod_var + sum(mdivv, 1)') .* s_var; % Eq. 6.34   
 
-    varinv = spinv(q2s_var)
-    s_var = 1 / (1 / s2s_prod_var + torch.sum(varinv, 0).reshape(-1, 1))
+    s_var = 1 / (1/s2q_prod_var + 1/q2s_prod_var)
 
-    mdivv = q2s_mean * varinv
-    s_mean = (s2s_prod_mean/s2s_prod_var + torch.sum(mdivv, 0).reshape(-1, 1)) * s_var
+    s_mean = (s2q_prod_mean/s2q_prod_var + q2s_prod_mean/q2s_prod_var) * s_var
 
     return s_mean, s_var
+
+
+def decode(x, dope, H, Q, Q0, b, iters, convg):
+
+    m, n = Q.shape
+    kb = x.shape[0]
+
+    num_bins = 2 ** b
+    binmx = convert_to_graycode(np.arange(0, num_bins), bits=b).reshape(1, num_bins, b).to(device)
+
+    s2q_prod_mean = torch.zeros(m, 1).to(device)
+    s2q_prod_var = torch.ones(m, 1).to(device)
+    z_prob = 0.5 * torch.ones(m * b, 1).to(device)
+    
+    s_hat_prev = torch.zeros(n, 1).to(device)
+
+    code = CodeBP(H).to(device)
+    source = GridBP(a=0.7, s=0.51, s0=1, mu0=0, n=n).to(device)
+
+    for i in range(iters):
+
+        u_prob = compute_quant_to_alphabet(s2q_prod_mean, s2q_prod_var, Q, Q0, b)
+        if torch.any(torch.isnan(u_prob)):
+            print("a")
+        z_prob = compute_alphabet_to_binary(u_prob, z_prob, b, binmx)
+        if torch.any(torch.isnan(z_prob)):
+            print("b")
+        code(torch.cat([1-dope, dope], dim=1), x, torch.cat([1-z_prob, z_prob], dim=1))  # Appropriate concatentation and slicing
+        z_prob = code.M_out[:, 1:]
+        if torch.any(torch.isnan(z_prob)):
+            print("c")
+        u_prob = compute_binary_to_alphabet(z_prob, b, binmx)
+        if torch.any(torch.isnan(u_prob)):
+            print("d")
+        q2s_prod_mean, q2s_prod_var = compute_quant_to_source(Q, Q0, u_prob, b)
+        if torch.any(torch.isnan(q2s_prod_mean + q2s_prod_var)):
+            print("e")
+        s2q_prod_mean, s2q_prod_var = source(q2s_prod_mean, q2s_prod_var)
+        if torch.any(torch.isnan(s2q_prod_mean + s2q_prod_var)):
+            print("g")
+
+        # Check convergence
+        s_hat, _ = marginalize(s2q_prod_mean, s2q_prod_var, q2s_prod_mean, q2s_prod_var)
+        s_diff = torch.max(torch.abs(s_hat_prev - s_hat))
+        print(f"{i}: {s_diff}")
+
+        if s_diff < convg:
+            break
+        s_hat_prev = s_hat
+
+    return s_hat

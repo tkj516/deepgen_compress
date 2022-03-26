@@ -5,17 +5,17 @@ sys.path.append('..')
 from encode.src import *
 from ldpc_generate import pyldpc_generate
 import numpy as np
-from decode.decode import decode
-from scipy.io import loadmat, savemat
+from decode.decode import decode_SPN
+from scipy.io import loadmat
 
 device = torch.device('cuda:0')
 
 # Parameters
-n = 20  # 20
+n = 1024  # 20
 m = n
 
 b = 4
-w = 0.6
+w = 1.5
 
 total_rate = 2.7  # 3.7
 
@@ -23,7 +23,7 @@ rand_dope = 0
 rand_dope_rate = 0.34
 lat_dope_bits = np.array([0]).reshape(-1, 1)
 
-max_iter = 150
+max_iter = 100
 convg_epsilon = 0.01
 
 # Generate quantizer matrix
@@ -39,22 +39,20 @@ else:
     num_dope_bits = dope_indices.shape[1]
 kb = total_rate * n - num_dope_bits
 
-# H = pyldpc_generate.generate(kb, mb, 3.0, 2, 123)
+H = pyldpc_generate.generate(kb, mb, 3.0, 2, 123)
 # print(kb, mb)
-# H = torch.FloatTensor(np.array(H.todense())).to(device)
-H = torch.FloatTensor(loadmat('/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/gauss_markov/test_20/H.mat')['H_f']).to(device)
-# savemat('H_bad.mat', {'H': H.cpu().numpy()})
+H = torch.FloatTensor(np.array(H.todense())).to(device)
+# H = torch.FloatTensor(loadmat('/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/gauss_markov/H.mat')['H_f']).to(device)
 
 # Generate source sequence
-# s = generate_markov(
-#     mu_0=0,
-#     s_0=1,
-#     s=0.51,
-#     a=0.7,
-#     n=n,
-# )
-# savemat('s_30.mat', {'s': s.cpu().numpy()})
-s = torch.FloatTensor(loadmat('/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/gauss_markov/test_20/s.mat')['s']).to(device)
+s = generate_markov(
+    mu_0=0,
+    s_0=1,
+    s=0.51,
+    a=0.7,
+    n=n,
+)
+# s = torch.FloatTensor(loadmat('/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/gauss_markov/s.mat')['s']).to(device)
 u = quantize_slice(s, Q, Q0, b)
 z = translate(u, b)
 x = hash_ldpc(z, H)
@@ -65,7 +63,7 @@ dope[dope_indices] = (z.cpu().numpy()[dope_indices] == 1)
 dope = torch.FloatTensor(dope).to(device)
 
 # Decode
-s_hat = decode(x, dope, H, Q, Q0, b, max_iter, convg_epsilon)
+s_hat = decode_SPN(x, dope, H, Q, Q0, b, max_iter, convg_epsilon)
 s_hat = s_hat.detach().cpu().numpy()
 
 # Print results

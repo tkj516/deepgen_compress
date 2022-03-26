@@ -5,7 +5,7 @@ sys.path.append('..')
 from encode.src import *
 from ldpc_generate import pyldpc_generate
 import numpy as np
-from decode.decode import decode
+from decode.src_alt import *
 from scipy.io import loadmat, savemat
 
 device = torch.device('cuda:0')

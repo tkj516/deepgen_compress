@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from .src import *
 from torch_parallel.code_bp_torch_v3 import CodeBP
-from gauss_markov.source import GridBP
+from gauss_markov.source import GridBP, SPNBP
 
 device = torch.device('cuda:0')
 
@@ -89,6 +89,58 @@ def decode(x, dope, H, Q, Q0, b, iters, convg):
 
         # Check convergence
         s_hat, _ = marginalize(s2s_prod_mean, s2s_prod_var, q2s_mean, q2s_var)
+        s_diff = torch.max(torch.abs(s_hat_prev - s_hat))
+        print(f"{i}: {s_diff}")
+
+        if s_diff < convg:
+            break
+        s_hat_prev = s_hat
+
+    return s_hat
+
+
+def decode_SPN(x, dope, H, Q, Q0, b, iters, convg):
+
+    m, n = Q.shape
+    kb = x.shape[0]
+
+    num_bins = 2 ** b
+    binmx = convert_to_graycode(np.arange(0, num_bins), bits=b).reshape(1, num_bins, b).to(device)
+
+    s2q_mean = torch.zeros(m, n).to(device)
+    s2q_var = torch.ones(Q.shape).to(device)
+    z_prob = 0.5 * torch.ones(m * b, 1).to(device)
+    
+    s_hat_prev = torch.zeros(n, 1).to(device)
+
+    code = CodeBP(H).to(device)
+    source = SPNBP().to(device)
+
+    for i in range(iters):
+
+        u_prob = source.compute_quant_to_alphabet(Q, Q0, b)
+        if torch.any(torch.isnan(u_prob)):
+            print("a")
+        z_prob = compute_alphabet_to_binary(u_prob, z_prob, b, binmx)
+        if torch.any(torch.isnan(z_prob)):
+            print("b")
+        code(torch.cat([1-dope, dope], dim=1), x, torch.cat([1-z_prob, z_prob], dim=1))  # Appropriate concatentation and slicing
+        z_prob = code.M_out[:, 1:]
+        if torch.any(torch.isnan(z_prob)):
+            print("c")
+        u_prob = compute_binary_to_alphabet(z_prob, b, binmx)
+        if torch.any(torch.isnan(u_prob)):
+            print("d")
+        q2s_mean, q2s_var = compute_quant_to_source(s2q_mean, s2q_var, Q, Q0, u_prob, b)
+        if torch.any(torch.isnan(q2s_mean + q2s_var)):
+            print("e")
+        q2s_prod_mean, q2s_prod_var = compute_source_to_prior(q2s_mean, q2s_var)
+        if torch.any(torch.isnan(q2s_prod_mean + q2s_prod_var)):
+            print("f")
+        source.compute_prior_bp(q2s_prod_mean, q2s_prod_var)
+
+        # Check convergence
+        s_hat = source.marginalize(q2s_prod_mean, q2s_prod_var)
         s_diff = torch.max(torch.abs(s_hat_prev - s_hat))
         print(f"{i}: {s_diff}")
 

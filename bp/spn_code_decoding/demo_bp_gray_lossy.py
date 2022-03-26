@@ -32,6 +32,7 @@ from ldpc_generate import pyldpc_generate
 from spn_code_decoding.markov_test.utils import *
 from spn_code_decoding.markov_test.markov_source import *
 from lossy_utils.utils import *
+from gauss_markov.utils import GaussMarkovDataset
 
 from tensorboardX import SummaryWriter
 
@@ -92,7 +93,7 @@ class Source():
         self.model.load_state_dict(model_checkpoint['model_state_dict'])
         self.model.eval()
 
-    def message_fast(self, quant_mean, quant_var, num_bins, width, dope_mask=None, dope_prob=None, sample_doping=False):
+    def message_fast(self, quant_mean, quant_var, num_bins, min, max, width, dope_mask=None, dope_prob=None, sample_doping=False):
 
         # Get the unfiltered message that will need to be corrected with 
         # doping probabilities in the next step
@@ -101,6 +102,8 @@ class Source():
             quant_var=quant_var,
             spn=self.model,
             num_bins=num_bins,
+            min=min,
+            max=max, 
             width=width,
         )  # (1, num_bins, h, w)
 
@@ -135,6 +138,7 @@ class SourceCodeBP():
         self.alphabet_size = args.num_bins
         self.width = args.width
         self.doping_type = args.doping_type
+        self.min = args.min_bin
 
         # Number of bits per alphabet
         self.bits = math.ceil(np.log2(self.alphabet_size))
@@ -150,6 +154,7 @@ class SourceCodeBP():
                             lambda x: torch.tensor(np.array(x)),
                             Reshape(in_size),
                             lambda x: x.float(),
+                            lambda x: x / 256,
                         ])
 
         if args.dataset == 'mnist':
@@ -158,6 +163,12 @@ class SourceCodeBP():
             self.dataset = FashionMNIST('../../../FashionMNIST', train=False, transform=self.transform)
         elif args.dataset == 'cifar10':
             self.dataset = CIFAR10('../../../CIFAR10', train=False, transform=self.transform)
+        elif args.dataset == 'gauss-markov':
+            self.transform = torchvision.transforms.Compose([
+                    Reshape(in_size),
+                    lambda x: x.float(),
+                ])
+            self.dataset = GaussMarkovDataset(phase='test')
         else:
             NotImplementedError("No other datasets supported currently")
 
@@ -228,25 +239,26 @@ class SourceCodeBP():
 
         idx = np.random.randint(0, len(self.dataset))
         self.s, _ = self.dataset[idx]
-        self.s = self.s.reshape(-1, 1).cpu().numpy() / 256
+        self.s = self.s.reshape(-1, 1).cpu().numpy() # / 256
         # self.samp = torch.FloatTensor(self.samp.reshape(-1, 1)).to(self.device)
         # # Works well with Numpy so just convert it to be safe
         # self.graycoded_samp = torch.FloatTensor(convert_to_graycode(self.samp.cpu().numpy().astype('uint8'), bits=self.bits)).to(self.device)
 
     def set_sample(self, x):
         
-        self.s = x.reshape(-1, 1) / 256
+        self.s = x.reshape(-1, 1).cpu().numpy() # / 256
         # self.samp = torch.FloatTensor(self.samp.reshape(-1, 1)).to(self.device)
         # # Works well with Numpy so just convert it to be safe
         # self.graycoded_samp = torch.FloatTensor(convert_to_graycode(self.samp.cpu().numpy().astype('uint8'), bits=self.bits)).to(self.device)
 
     def quantize(self):
 
-        self.q = np.minimum(np.maximum(np.floor(self.s / self.width), 0), self.alphabet_size-1)
+        self.max = self.min + self.alphabet_size - 1
+        self.q = np.minimum(np.maximum(np.floor(self.s / self.width), self.min), self.max)
         
     def translate(self):
 
-        self.g = convert_to_graycode(self.q.astype('uint8'), bits=self.bits)
+        self.g = convert_to_graycode((self.q - self.min).astype('uint8'), bits=self.bits)
 
     def hash(self):
 
@@ -271,8 +283,8 @@ class SourceCodeBP():
 
     def encode_full(self, x):
 
-        x = np.minimum(np.maximum(np.floor(x / self.width), 0), self.alphabet_size-1)
-        x = convert_to_graycode(x.astype('uint8'), bits=self.bits)
+        x = np.minimum(np.maximum(np.floor(x / self.width), self.min), self.max)
+        x = convert_to_graycode((x - self.min).astype('uint8'), bits=self.bits)
         x = (self.H.cpu().numpy() @ x) % 2
 
         return x
@@ -283,10 +295,6 @@ class SourceCodeBP():
         self.code(self.ps, self.codeword, self.M_to_code)
         self.M_from_code = self.code.M_out  # (h * w * bits, 2)
 
-        if torch.any(torch.isnan(self.M_from_code)):
-            print(self.M_to_code)
-            print("NaN from code BP")
-
         # Convert the message over the graycode to a message
         # over the quantizer bins
         self.M_to_quant = msg_graycode_to_int(
@@ -296,22 +304,15 @@ class SourceCodeBP():
             bits=self.bits,
         )  # (1, h * w, alphabet_size)
 
-        if torch.any(torch.isnan(self.M_to_quant)):
-            print("NaN from to quant")
-
         # Convert the discrete messages over the quantizer bins
         # to a Gaussian message by computing the mean and variance
         self.quant_mean, self.quant_var = quant_to_source(
             num_bins=self.alphabet_size,
+            min=self.min,
+            max=self.max,
             width=self.width,
             message=self.M_to_quant  #(self.M_to_quant * self.npot) / torch.sum(self.M_to_quant * self.npot, dim=-1, keepdim=True),  #TODO: Might not need to multiply here
         )  # (1, h * w)
-
-        if torch.any(torch.isnan(self.quant_mean)):
-            print("NaN from quant mean")
-
-        if torch.any(torch.isnan(self.quant_var)):
-            print("NaN from quant var")
 
         # Reshape for input to SPN source -- (1, out_channels, in_channels, h, w)
         self.quant_mean = self.quant_mean.reshape(1, 1, 1, self.h, self.w)
@@ -323,27 +324,18 @@ class SourceCodeBP():
             quant_var=self.quant_var,
             num_bins=self.alphabet_size,
             width=self.width,
+            min=self.min, 
+            max=self.max, 
             dope_mask=self.mask,
             dope_prob=self.npot,
             sample_doping=(self.doping_type == 'sample_doping'),
         )  # (1, h * w, num_bins), (1, num_components, h, w)
 
-        if torch.any(torch.isnan(self.M_from_grid)):
-            print("NaN from grid")
-
-        if torch.any(torch.isnan(mixture_probs)):
-            print("NaN from mixture probs")
-
         # Convert to messages over graycode
         self.M_to_code = msg_int_to_graycode(self.M_from_grid)  # (h * w * bits, 2)
 
-        if torch.any(torch.isnan(self.M_to_code)):
-            print("NaN from to_code")
-
         if self.doping_type == 'lattice_doping':
             self.M_to_code = torch.where(self.mask == 1, self.ps, self.M_to_code)
-            if torch.any(torch.isnan(self.M_to_code)):
-                print("NaN from to_code")
 
         # Compute the marginal image
         base_mean = self.source.model.base_layer.mean
@@ -382,7 +374,7 @@ class SourceCodeBP():
             mse = torch.mean((marginal_image - self.samp.reshape(1, 1, self.h, self.w))**2).item()
 
             if verbose:
-                print(f"Iteration {i} :- MSE = {mse}")
+                print(f"Iteration {i} :- MSE = {mse}  SQNR={-10 * np.log10(mse)}")
 
             # Termination condition to end belief propagation
             if torch.max(torch.abs(marginal_image - max_ll_old)).item() < 0.01:
@@ -394,7 +386,8 @@ class SourceCodeBP():
         z_hat = self.encode_full(marginal_image.detach().cpu().numpy().reshape(-1, 1))
         errs = np.count_nonzero(z - z_hat)
 
-        print(f"Errors in constraint satisfaction :- {errs} / {len(z_hat)}")
+        if verbose:
+            print(f"Errors in constraint satisfaction :- {errs} / {len(z_hat)}")
 
         return mse, errs, torch.cat(self.video, dim=1)
 
@@ -412,12 +405,13 @@ def test_source_code_bp_spn():
     parser.add_argument('--checkpoint', type=str, default=None, help='Path to checkpoint file')
     parser.add_argument('--phase', type=str, default='test', help='Phase option for Ising dataset')
     parser.add_argument('--doping_type', type=str, default='sample_doping', choices=['sample_doping', 'lattice_doping'], help="Type of doping to use")
+    parser.add_argument('--min_bin', type=int, default=0, help="Minimum value of the bins")
     # DGC-SPN arguments
     parser.add_argument('--n-batches', type=int, default=128, help='The number of input distribution layer batches.')
     parser.add_argument('--sum-channels', type=int, default=64, help='The number of channels at sum layers.')
     parser.add_argument('--depthwise', action='store_true', help='Whether to use depthwise convolution layers.')
     parser.add_argument('--leaf_distribution', type=str, default='gaussian', help="Type of leaf distribution")
-    parser.add_argument('--dataset', type=str, choices=['mnist', 'fashion-mnist', 'cifar10'], default='cifar10', help='Dataset to use for training')
+    parser.add_argument('--dataset', type=str, choices=['mnist', 'fashion-mnist', 'cifar10', 'gauss-markov'], default='cifar10', help='Dataset to use for training')
     parser.add_argument('--root_dir', type=str, default='/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/spn_code_decoding/markov_test/markov_hf_001',
                     help='Dataset root directory')
     parser.add_argument('--gpu_id', type=int, default=0, help="GPU device to use")
@@ -428,6 +422,8 @@ def test_source_code_bp_spn():
     if args.dataset in  ['mnist', 'fashion-mnist']:
         h = w = 28
     elif args.dataset == 'cifar10':
+        h = w = 32
+    elif args.dataset == 'gauss-markov':
         h = w = 32
     else:
         raise NotImplementedError("Decoding not implemented for this dataset")
@@ -441,7 +437,7 @@ def test_source_code_bp_spn():
     N_bits = h * w * bits
 
     # Set the inverse width from width
-    args.width = 1 / args.inv_width
+    args.inv_width = 1 / args.width
 
     source_code_bp = SourceCodeBP(
                         H=pyldpc_generate.generate(int(rate * N_bits), N_bits, 3.0, 2, 123),
