@@ -74,20 +74,25 @@ def compute_alphabet_to_binary(u_prob, z_prob, b, binmx):
 # z_prob_out_pre = sum(bsxfun(@times, prodmx, binmx), 2) ./ sum(prodmx, 2); % m * 1 * b 3D-matrix
 # z_prob = reshape(permute(z_prob_out_pre, [3,1,2]), [m*b, 1]); 
 
+
+    u_prob = u_prob.double()
+    z_prob = z_prob.double()
+    binmx = binmx.double()
+
     m = z_prob.shape[0] // b
-    ep = 0.0001
+    ep = 0.00001
 
     z_prob_reshaped = z_prob.reshape(m, 1, b) + ep  # TODO:  Fixed from MATLAB version (don't use FORTRAN ordering)
     u_prob_pre = torch.abs(z_prob_reshaped + binmx - 1) 
 
     u_prob_pre_log = torch.log(u_prob_pre)
     logprodmx = torch.sum(u_prob_pre_log, dim=2) + torch.log(u_prob)
-    prodmx = torch.exp(logprodmx.unsqueeze(-1) - u_prob_pre_log)
+    prodmx = torch.exp(logprodmx.unsqueeze(-1)- u_prob_pre_log)
 
     z_prob_out_pre = torch.sum(prodmx * binmx, dim=1, keepdim=True) / torch.sum(prodmx, dim=1, keepdim=True)
     z_prob = z_prob_out_pre.reshape(m*b, 1)  # TODO:  Fixed from MATLAB version (don't use FORTRAN ordering)
 
-    return z_prob
+    return z_prob.float()
 
 
 def compute_binary_to_alphabet(z_prob, b, binmx):
@@ -115,6 +120,9 @@ def compute_binary_to_alphabet(z_prob, b, binmx):
 # %% take product along 3rd axis (Eq. 4.35)
 # u_prob = exp(sum(log(u_prob_pre), 3));     
 
+    z_prob = z_prob.double()
+    binmx = binmx.double()
+
     m = z_prob.shape[0] // b
 
     z_prob_reshaped = z_prob.reshape(m, 1, b)  # TODO: Changed from MATLAB version to circumvent FORTRAN indexing
@@ -122,7 +130,7 @@ def compute_binary_to_alphabet(z_prob, b, binmx):
 
     u_prob = torch.exp(torch.sum(torch.log(u_prob_pre), dim=2))
 
-    return u_prob
+    return u_prob.float()
 
 def compute_quant_to_alphabet(s2q_prod_mean, s2q_prod_var, Q, Q0, b):
 
@@ -156,11 +164,14 @@ def compute_quant_to_alphabet(s2q_prod_mean, s2q_prod_var, Q, Q0, b):
 # cc = bsxfun(@plus, basec, addc); % value in Eq. 5.48
 # u_prob = diff([zeros(m,1), normcdf(cc), ones(m,1)], 1, 2); %Eq. 5.49
 
+    s2q_prod_mean = s2q_prod_mean.double()
+    s2q_prod_var = s2q_prod_var.double()
+
     num_bins = 2 ** b
     m = Q.shape[0]
     bin_internal = torch.arange(-num_bins/2 + 1, num_bins/2).reshape(1, -1).to(device)
 
-    q = Q[0, 0]
+    q = Q[0, 0].item()
     
     QQ = q ** 2
     Qms = q * s2q_prod_mean  # m x 1
@@ -180,7 +191,7 @@ def compute_quant_to_alphabet(s2q_prod_mean, s2q_prod_var, Q, Q0, b):
     probs = torch.cat([torch.zeros(m, 1).to(device), Phi(cc), torch.ones(m, 1).to(device)], dim=1)  # m x (num_bins + 1)
     probs = probs[..., 1:] - probs[..., :-1]  # m x num_bins
 
-    return probs
+    return probs.float()
 
 
 def compute_quant_to_source(Q, Q0, u_prob, b):
@@ -219,7 +230,9 @@ def compute_quant_to_source(Q, Q0, u_prob, b):
 # q2s_mean = - Qinv .* (diag(sparse(Qms)) * qpos - Qm) + diag(sparse(- Q0 + binmean + .5)) * Qinv; 
 # q2s_var = QQinv .* (diag(sparse(sum(QQv, 2))) * qpos - QQv) + diag(sparse(binvar)) * QQinv + convert_slab(Qinv);
 
-    q = Q[0, 0]  # 1 / width
+    u_prob = u_prob.double()
+    
+    q = Q[0, 0].item()  # 1 / width
     
     num_bins = 2 ** b
     bin = torch.arange(-num_bins / 2, num_bins/2).reshape(1, -1).to(device)
@@ -232,7 +245,7 @@ def compute_quant_to_source(Q, Q0, u_prob, b):
     q2s_mean = Qinv * (-Q0 + binmean + 0.5)  # m x 1
     q2s_var = QQinv * binvar + QQinv / 12  # m x 1
 
-    return q2s_mean, q2s_var
+    return q2s_mean.float(), q2s_var.float()
 
 
 def marginalize(s2q_prod_mean, s2q_prod_var, q2s_prod_mean, q2s_prod_var):
@@ -256,11 +269,16 @@ def marginalize(s2q_prod_mean, s2q_prod_var, q2s_prod_mean, q2s_prod_var):
 # mdivv = q2s_mean.*varinv;
 # s_mean = (s2s_prod_mean./s2s_prod_var + sum(mdivv, 1)') .* s_var; % Eq. 6.34   
 
+    s2q_prod_mean = s2q_prod_mean.double()
+    s2q_prod_var = s2q_prod_var.double()
+    q2s_prod_mean = q2s_prod_mean.double()
+    q2s_prod_var = q2s_prod_var.double()
+
     s_var = 1 / (1/s2q_prod_var + 1/q2s_prod_var)
 
     s_mean = (s2q_prod_mean/s2q_prod_var + q2s_prod_mean/q2s_prod_var) * s_var
 
-    return s_mean, s_var
+    return s_mean.float(), s_var.float()
 
 
 def decode(x, dope, H, Q, Q0, b, iters, convg):

@@ -28,15 +28,15 @@ class GridBP(nn.Module):
 
         # Initialize the messages
         # Set them as parameters for gradient backpropagation
-        self.hf = nn.Parameter(torch.zeros(n-1, 1))
-        self.Lf = nn.Parameter(torch.ones(n-1, 1))
-        self.hb = nn.Parameter(torch.zeros(n-1, 1))
-        self.Lb = nn.Parameter(torch.ones(n-1, 1))
+        self.hf = nn.Parameter(torch.zeros(n-1, 1).double())
+        self.Lf = nn.Parameter(torch.ones(n-1, 1).double())
+        self.hb = nn.Parameter(torch.zeros(n-1, 1).double())
+        self.Lb = nn.Parameter(torch.ones(n-1, 1).double())
 
         # Node and edge potentials
-        Li = torch.cat([torch.ones(1, 1) / s0, torch.ones(n-1, 1) / s], dim=0) + \
-            torch.cat([a**2 * torch.ones(n-1, 1) / s, torch.zeros(1, 1)], dim=0)
-        hi = torch.zeros(n, 1)
+        Li = torch.cat([torch.ones(1, 1).double() / s0, torch.ones(n-1, 1).double() / s], dim=0) + \
+            torch.cat([a**2 * torch.ones(n-1, 1).double() / s, torch.zeros(1, 1).double()], dim=0)
+        hi = torch.zeros(n, 1).double()
         self.register_buffer('Li', Li)
         self.register_buffer('hi', hi)
 
@@ -44,14 +44,17 @@ class GridBP(nn.Module):
 
         # Store the device name
         self.device = device
-        self.register_buffer('zero', torch.zeros(1, 1))
-        self.register_buffer('one', torch.ones(1, 1))
+        self.register_buffer('zero', torch.zeros(1, 1).double())
+        self.register_buffer('one', torch.ones(1, 1).double())
 
     def forward(self, mu_in, var_in):
         """
         Min : h x w x 2
         Mout: h x w x 2
         """
+
+        mu_in = mu_in.double()
+        var_in = var_in.double()
 
         Lin = 1 / var_in
         hin = Lin * mu_in
@@ -76,7 +79,7 @@ class GridBP(nn.Module):
         s2s_prod_var = 1 / Li_hat
         s2s_prod_mean = s2s_prod_var * hi_hat
 
-        return s2s_prod_mean, s2s_prod_var
+        return s2s_prod_mean.float(), s2s_prod_var.float()
 
     def reset_messages(self):
 
