@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from torch_parallel.code_bp_torch_v3 import CodeBP
+from torch_parallel.code_bp_torch_v2 import CodeBP
 from gauss_markov.source import GridBP, SPNBP
 
 device = torch.device('cuda:0')

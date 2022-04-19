@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from .src import *
-from torch_parallel.code_bp_torch_v3 import CodeBP
+from torch_parallel.code_bp_torch_v2 import CodeBP
 from gauss_markov.source import GridBP, SPNBP
 
 device = torch.device('cuda:0')
@@ -99,7 +99,7 @@ def decode(x, dope, H, Q, Q0, b, iters, convg):
     return s_hat
 
 
-def decode_SPN(x, dope, H, Q, Q0, b, iters, convg):
+def decode_SPN(x, dope, H, Q, Q0, b, iters, convg, checkpoint=None):
 
     m, n = Q.shape
     kb = x.shape[0]

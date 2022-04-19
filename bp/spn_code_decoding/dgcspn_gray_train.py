@@ -112,7 +112,8 @@ if __name__ == '__main__':
                         lambda x: torch.tensor(np.array(x)),
                         Reshape(in_size),
                         lambda x: x.float(),
-                        lambda x: x / 256 if args.gaussian else x
+                        lambda x: x / 256 if args.gaussian else x,
+                        lambda x: 2 * x - 1 if args.gaussian else x,
                     ])
         data_train = torchvision.datasets.CIFAR10('../../../CIFAR10', train=True, transform=transform, download=True)
         data_test = torchvision.datasets.CIFAR10('../../../CIFAR10', train=False, transform=transform, download=True)

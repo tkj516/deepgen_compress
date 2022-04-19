@@ -43,6 +43,10 @@ def compute_alphabet_to_binary(u_prob, z_prob, b, binmx):
 # z_prob_out_pre = sum(bsxfun(@times, prodmx, binmx), 2) ./ sum(prodmx, 2); % m * 1 * b 3D-matrix
 # z_prob = reshape(permute(z_prob_out_pre, [3,1,2]), [m*b, 1]); 
 
+    u_prob = u_prob.double()
+    z_prob = z_prob.double()
+    binmx= binmx.double()
+
     m = z_prob.shape[0] // b
     ep = 0.0001
 
@@ -56,7 +60,7 @@ def compute_alphabet_to_binary(u_prob, z_prob, b, binmx):
     z_prob_out_pre = torch.sum(prodmx * binmx, dim=1, keepdim=True) / torch.sum(prodmx, dim=1, keepdim=True)
     z_prob = z_prob_out_pre.reshape(m*b, 1)  # TODO:  Fixed from MATLAB version (don't use FORTRAN ordering)
 
-    return z_prob
+    return z_prob.float()
 
 
 def compute_binary_to_alphabet(z_prob, b, binmx):
@@ -84,6 +88,9 @@ def compute_binary_to_alphabet(z_prob, b, binmx):
 # %% take product along 3rd axis (Eq. 4.35)
 # u_prob = exp(sum(log(u_prob_pre), 3));     
 
+    z_prob = z_prob.double()
+    binmx = binmx.double()
+
     m = z_prob.shape[0] // b
 
     z_prob_reshaped = z_prob.reshape(m, 1, b)  # TODO: Changed from MATLAB version to circumvent FORTRAN indexing
@@ -91,7 +98,7 @@ def compute_binary_to_alphabet(z_prob, b, binmx):
 
     u_prob = torch.exp(torch.sum(torch.log(u_prob_pre), dim=2))
 
-    return u_prob
+    return u_prob.float()
 
 def compute_quant_to_alphabet(s2q_mean, s2q_var, Q, Q0, b):
 
@@ -125,7 +132,10 @@ def compute_quant_to_alphabet(s2q_mean, s2q_var, Q, Q0, b):
 # cc = bsxfun(@plus, basec, addc); % value in Eq. 5.48
 # u_prob = diff([zeros(m,1), normcdf(cc), ones(m,1)], 1, 2); %Eq. 5.49
 
-    device = s2q_mean.device
+    s2q_mean = s2q_mean.double()
+    s2q_var = s2q_var.double()
+    Q = Q.double()
+    Q0 = Q0.double()
 
     num_bins = 2 ** b
     m = Q.shape[0]
@@ -150,7 +160,7 @@ def compute_quant_to_alphabet(s2q_mean, s2q_var, Q, Q0, b):
     probs = torch.cat([torch.zeros(m, 1).to(device), Phi(cc), torch.ones(m, 1).to(device)], dim=1)  # m x (num_bins + 1)
     probs = probs[..., 1:] - probs[..., :-1]  # m x num_bins
 
-    return probs
+    return probs.float()
 
 
 def compute_quant_to_source(s2q_mean, s2q_var, Q, Q0, u_prob, b):
@@ -189,6 +199,12 @@ def compute_quant_to_source(s2q_mean, s2q_var, Q, Q0, u_prob, b):
 # q2s_mean = - Qinv .* (diag(sparse(Qms)) * qpos - Qm) + diag(sparse(- Q0 + binmean + .5)) * Qinv; 
 # q2s_var = QQinv .* (diag(sparse(sum(QQv, 2))) * qpos - QQv) + diag(sparse(binvar)) * QQinv + convert_slab(Qinv);
 
+    s2q_mean = s2q_mean.double()
+    s2q_var = s2q_var.double()
+    Q = Q.double()
+    Q0 = Q0.double()
+    u_prob = u_prob.double()
+
     num_bins = 2 ** b
     bin = torch.arange(-num_bins / 2, num_bins/2).reshape(1, -1).to(device)
 
@@ -205,7 +221,7 @@ def compute_quant_to_source(s2q_mean, s2q_var, Q, Q0, u_prob, b):
     q2s_mean = -Qinv * (Qms * qpos - Qm) + Qinv * (-Q0 + binmean + 0.5)
     q2s_var = QQinv * (torch.sum(QQv, dim=1, keepdim=True) * qpos - QQv) + QQinv * binvar + QQinv / 12
 
-    return q2s_mean, q2s_var
+    return q2s_mean.float(), q2s_var.float()
 
 
 def compute_source_to_prior(q2s_mean, q2s_var):
@@ -227,13 +243,16 @@ def compute_source_to_prior(q2s_mean, q2s_var):
 # mdivv = q2s_mean.*varinv;
 # q2s_prod_mean = full(sum(mdivv, 1)') .* q2s_prod_var;
 
+    q2s_mean = q2s_mean.double()
+    q2s_var = q2s_var.double()
+
     varinv = spinv(q2s_var)
     q2s_prod_var = 1 / torch.sum(varinv, dim=0).reshape(-1, 1)
 
     mdivv = q2s_mean * varinv
     q2s_prod_mean = torch.sum(mdivv, 0).reshape(-1, 1) * q2s_prod_var
 
-    return q2s_prod_mean, q2s_prod_var
+    return q2s_prod_mean.float(), q2s_prod_var.float()
 
 def compute_source_to_quant(s2s_prod_mean, s2s_prod_var, q2s_mean, q2s_var, Q):
 
@@ -258,6 +277,11 @@ def compute_source_to_quant(s2s_prod_mean, s2s_prod_var, q2s_mean, q2s_var, Q):
 # mdivv = q2s_mean.*varinv;
 # s2q_mean = (bsxfun(@times, qpos, (s2s_prod_mean./s2s_prod_var)' + sum(mdivv, 1)) - mdivv) .* s2q_var;
 
+    s2s_prod_mean = s2s_prod_mean.double()
+    s2s_prod_var = s2s_prod_var.double()
+    q2s_mean = q2s_mean.double()
+    q2s_var = q2s_var.double()
+
     qpos = 1 - (Q == 0).float()
 
     varinv = spinv(q2s_var)
@@ -266,7 +290,7 @@ def compute_source_to_quant(s2s_prod_mean, s2s_prod_var, q2s_mean, q2s_var, Q):
     mdivv = q2s_mean * varinv
     s2q_mean = qpos * ((s2s_prod_mean/s2s_prod_var).reshape(1, -1) + torch.sum(mdivv, 0) - mdivv) * s2q_var
 
-    return s2q_mean, s2q_var
+    return s2q_mean.float(), s2q_var.float()
 
 
 def marginalize(s2s_prod_mean, s2s_prod_var, q2s_mean, q2s_var):
@@ -290,10 +314,15 @@ def marginalize(s2s_prod_mean, s2s_prod_var, q2s_mean, q2s_var):
 # mdivv = q2s_mean.*varinv;
 # s_mean = (s2s_prod_mean./s2s_prod_var + sum(mdivv, 1)') .* s_var; % Eq. 6.34   
 
+    s2s_prod_mean = s2s_prod_mean.double()
+    s2s_prod_var = s2s_prod_var.double()
+    q2s_mean = q2s_mean.double()
+    q2s_var = q2s_var.double()
+
     varinv = spinv(q2s_var)
     s_var = 1 / (1 / s2s_prod_var + torch.sum(varinv, 0).reshape(-1, 1))
 
     mdivv = q2s_mean * varinv
     s_mean = (s2s_prod_mean/s2s_prod_var + torch.sum(mdivv, 0).reshape(-1, 1)) * s_var
 
-    return s_mean, s_var
+    return s_mean.float(), s_var.float()

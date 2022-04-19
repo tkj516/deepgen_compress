@@ -15,13 +15,13 @@ n = 1024  # 20
 m = n
 
 b = 4
-w = 1.5
+w = 0.6
 
-total_rate = 2.7  # 3.7
+total_rate = 3.7  # 3.7
 
 rand_dope = 0
 rand_dope_rate = 0.34
-lat_dope_bits = np.array([0]).reshape(-1, 1)
+lat_dope_bits = np.array([b-1]).reshape(-1, 1)
 
 max_iter = 100
 convg_epsilon = 0.01

@@ -134,7 +134,7 @@ class MyDataParallel(torch.nn.DataParallel):
 
 class SPNBP(nn.Module):
 
-    def __init__(self, in_size=(1, 32, 32)):
+    def __init__(self, in_size=(1, 32, 32), checkpoint='/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/spn_code_decoding/dgcspn/gauss-markov/generative/model_2022-03-24_13:20:25.pt'):
 
         super(SPNBP, self).__init__()
 
@@ -168,7 +168,7 @@ class SPNBP(nn.Module):
         self.model.to(self.device)
 
         # Restore the checkpoint and set to evaluation mode
-        model_checkpoint = torch.load('/fs/data/tejasj/Masters_Thesis/deepgen_compress/bp/spn_code_decoding/dgcspn/gauss-markov/generative/model_2022-03-24_13:20:25.pt')
+        model_checkpoint = torch.load(checkpoint)
         self.model.load_state_dict(model_checkpoint['model_state_dict'])
         self.model.eval()
         del model_checkpoint
@@ -176,12 +176,15 @@ class SPNBP(nn.Module):
         # Save the base layer meand and variance
         # The SPN base distribution leaves are gaussian, so compute the new means and variances
         # of the scaled gaussian by incorporating external messages
-        self.base_var = torch.exp(2 * self.model.base_layer.log_scale)  # (num_components, 1, h, w)
-        self.base_mean = self.model.base_layer.mean
-        self.mixture_probs = torch.ones(self.base_mean.shape[0], self.h * self.w, 1).to(self.device)
+        self.base_var = torch.exp(2 * self.model.base_layer.log_scale).double()  # (num_components, 1, h, w)
+        self.base_mean = self.model.base_layer.mean.double()
+        self.mixture_probs = torch.ones(self.base_mean.shape[0], self.h * self.w, 1).double().to(self.device)
 
     def compute_prior_bp(self, q2s_prod_mean, q2s_prod_var):
 
+        q2s_prod_mean = q2s_prod_mean.double()
+        q2s_prod_var = q2s_prod_var.double()
+        
         # Get the shape of the base means and variances
         num_components, _, h, w = self.model.base_layer.mean.shape
 
@@ -193,7 +196,7 @@ class SPNBP(nn.Module):
         # external beliefs we need to compute the expected value of the external beliefs
         # w.r.t. the leaf distributions
         z = -0.5 * torch.log(2 * np.pi * (self.base_var + q2s_prod_var)) - 0.5 * ((self.base_mean - q2s_prod_mean)**2 / (self.base_var + q2s_prod_var))
-        z = z.squeeze(1).unsqueeze(0)  # Remove in_channels dimension and add batch dimension
+        z = z.squeeze(1).unsqueeze(0).float()  # Remove in_channels dimension and add batch dimension
 
         y = z
         for layer in self.model.layers:
@@ -204,6 +207,7 @@ class SPNBP(nn.Module):
         # Compute gradients to compute the mixture component probabilities. Normalize them
         # since they are discrete probabilities
         (z_grad, ) = torch.autograd.grad(y, z, grad_outputs=torch.ones_like(y))  # (1, num_components, h, w)
+        # z_grad *= torch.exp(z)
         z_grad /= torch.sum(z_grad, dim=1, keepdim=True)
         z_grad = z_grad.reshape(1, num_components, h * w, 1)  # (1, num_components, n, 1)
         
@@ -241,13 +245,16 @@ class SPNBP(nn.Module):
     # cc = bsxfun(@plus, basec, addc); % value in Eq. 5.48
     # u_prob = diff([zeros(m,1), normcdf(cc), ones(m,1)], 1, 2); %Eq. 5.49
 
+        Q = Q.double()
+        Q0 = Q0.double()
+
         # Get the shape of the base means and variances
         num_components, _, h, w = self.model.base_layer.mean.shape
         n = h * w
 
         # Transform the means and variances to shape num_components x m x n
-        s2q_mean = torch.zeros(num_components, n, n).to(self.device)
-        s2q_var = torch.zeros(num_components, n, n).to(self.device)
+        s2q_mean = torch.zeros(num_components, n, n).double().to(self.device)
+        s2q_var = torch.zeros(num_components, n, n).double().to(self.device)
         s2q_mean[:, torch.eye(n) == 1] = self.base_mean.squeeze().reshape(num_components, n)
         s2q_var[:, torch.eye(n) == 1] = self.base_var.squeeze().reshape(num_components, n)
 
@@ -278,9 +285,12 @@ class SPNBP(nn.Module):
         # Multiply with the mixture probabilities.  
         probs = torch.sum(self.mixture_probs * probs, dim=0)  # m x num_bins
 
-        return probs    
+        return probs.float()    
 
     def marginalize(self, q2s_prod_mean, q2s_prod_var):
+
+        q2s_prod_mean = q2s_prod_mean.double()
+        q2s_prod_var = q2s_prod_var.double()
 
         # Get the shape of the base means and variances
         num_components, _, h, w = self.model.base_layer.mean.shape
@@ -297,11 +307,11 @@ class SPNBP(nn.Module):
         scale_mul_mixture_probs_norm = scale_mul_mixture_probs / torch.sum(scale_mul_mixture_probs, dim=0, keepdim=True)
 
         # Compute mean by multiplying by mean of each mixture and summing
-        # base_mul_exp = (base_mean * q2s_prod_var + q2s_prod_mean * base_var) / (base_var + q2s_prod_var)
-        base_mul_exp = base_mean
+        base_mul_exp = (base_mean * q2s_prod_var + q2s_prod_mean * base_var) / (base_var + q2s_prod_var)
+        # base_mul_exp = base_mean
         s_mean = torch.sum(scale_mul_mixture_probs_norm * base_mul_exp, dim=0)
 
-        return s_mean
+        return s_mean.float()
 
 
 
