@@ -150,13 +150,13 @@ class VAE(nn.Module):
 
         z = self.sample(mean, scale)  # (bs, compression_channels, h, w)
 
-        obs_mean, obs_log_scale = self.decoder(z)  # (bs, compression_channels, h, w)
+        obs_mean, obs_log_scale = self.decoder(z)  # (bs, num_base_distributions, h, w)
 
         # Unsqueeze to feed to SPN
         obs_mean = obs_mean.unsqueeze(2)
         obs_log_scale = obs_log_scale.unsqueeze(2)
 
-        log_likelihood = self.spn(images, obs_mean, obs_log_scale).squeeze()
+        log_likelihood = self.spn(images, obs_mean, obs_log_scale)
 
         log_prior = self.log_prior_prob(z)
 
@@ -168,14 +168,20 @@ class VAE(nn.Module):
 
     def log_prior_prob(self, z):
 
-        return torch.sum(Normal(0, 1).log_prob(z), dim=[1, 2, 3])
+        return torch.sum(Normal(0, 1).log_prob(z), dim=[1, 2, 3]).unsqueeze(-1)
 
     def log_post_prob(self, z, mean, scale):
 
-        return torch.sum(Normal(mean, scale).log_prob(z), dim=[1, 2, 3])
+        return torch.sum(Normal(mean, scale).log_prob(z), dim=[1, 2, 3]).unsqueeze(-1)
 
     def sample(self, mean, scale):
 
         eps = torch.randn_like(scale)
 
         return eps.mul(scale).add_(mean)
+
+    def decode(self, z):
+
+        obs_mean, obs_log_scale = self.decoder(z)  # (bs, compression_channels, h, w)
+
+        return obs_mean, obs_log_scale

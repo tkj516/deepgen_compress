@@ -93,7 +93,7 @@ if __name__ == '__main__':
                         Reshape(in_size),
                         lambda x: x.float(),
                         lambda x: x / 256,
-                        lambda x: 2 * x - 1,
+                        # lambda x: 2 * x - 1,
                     ])
         data_train = torchvision.datasets.CIFAR10('../../../CIFAR10', train=True, transform=transform, download=True)
         data_test = torchvision.datasets.CIFAR10('../../../CIFAR10', train=False, transform=transform, download=True)

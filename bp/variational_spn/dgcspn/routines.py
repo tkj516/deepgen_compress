@@ -149,9 +149,9 @@ def torch_train_generative(model, train_loader, val_loader, optimizer, epochs, p
             inputs = inputs.to(device)
             optimizer.zero_grad()
             elbo, ll = model(inputs)
-            loss = elbo.mean(dim=0)
-            running_train_loss(loss)
-            running_train_ll(ll.mean(dim=0))
+            running_train_loss(elbo.sum())
+            running_train_ll(ll.sum())
+            loss = elbo.mean()
             loss.backward()
             optimizer.step()
 
@@ -180,9 +180,9 @@ def torch_train_generative(model, train_loader, val_loader, optimizer, epochs, p
             for inputs, targets in tk_val:
                 inputs = inputs.to(device)
                 elbo, ll = model(inputs)
-                loss = elbo.mean(dim=0)
-                running_val_loss(loss)
-                running_val_ll(ll.mean(dim=0))
+                running_val_loss(elbo.sum())
+                running_val_ll(ll.sum())
+                loss = elbo.mean()
 
         # Get the average train and validation losses and print it
         end_time = time.time()
@@ -190,7 +190,7 @@ def torch_train_generative(model, train_loader, val_loader, optimizer, epochs, p
         val_loss = running_val_loss.average()
         train_ll = running_train_ll.average()
         val_ll = running_val_ll.average()
-        print('Epoch %d/%d - train_loss: %.4f, train_ll: %.4f, validation_loss: %.4f [%ds], validation_ll: %.4f' %
+        print('Epoch %d/%d - train_loss: %.4f, train_ll: %.4f, validation_loss: %.4f , validation_ll: %.4f [%ds]' %
               (epoch + 1, epochs, train_loss, train_ll, val_loss, val_ll, end_time - start_time))
 
         # Log the loss in tensorboard
@@ -263,8 +263,8 @@ def torch_test_generative(model, test_loader, device):
     with torch.no_grad():
         for inputs, targets in test_loader:
             inputs = inputs.to(device)
-            elbo, ll = model(inputs).cpu().numpy().flatten()
-            test_ll = np.hstack((test_ll, ll.mean(dim=0)))
+            elbo, ll = model(inputs)
+            test_ll = np.hstack((test_ll, ll.mean()))
     mu_ll = np.mean(test_ll)
     sigma_ll = 2.0 * np.std(test_ll) / np.sqrt(len(test_ll))
 
